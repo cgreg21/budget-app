@@ -1,25 +1,29 @@
 /*
  * ui/views/budget-view.ts — the window content for the selected month:
- * summary cards, the collapsible category charts and the transaction list,
- * refreshed from the BudgetStore and from the threshold settings colouring the
- * balance.
+ * summary cards on top, then the transaction list with the category charts in
+ * a column beside it, refreshed from the BudgetStore and from the threshold
+ * settings colouring the balance.
  */
 import Gtk from 'gi:Gtk-4.0'
 
 import type { BudgetStore } from '../../data/budget-store.js'
 import type { CategoryStore } from '../../data/category-store.js'
-import type { PreferencesStore } from '../../data/preferences-store.js'
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
 import type { RecurrenceSettings } from '../../domain/recurrence.js'
 import type { TransactionInput } from '../../domain/transaction.js'
+import { openConfirmDeleteDialog } from '../dialogs/confirm-delete-dialog.js'
 import { openEditScopeDialog } from '../dialogs/edit-scope-dialog.js'
 import { openTransactionDialog } from '../dialogs/transaction-dialog.js'
+import { formatDate, formatSignedAmount } from '../format.js'
 import type { GtkWidget } from '../gtk-types.js'
 import type { DisposableComponent, Notify } from '../types.js'
 import { createWriteGuard } from '../write-guard.js'
-import { createChartsSection } from './charts-section.js'
+import { createCategoryCharts } from './category-charts.js'
 import { createSummaryCards } from './summary-cards.js'
 import { createTransactionList } from './transaction-list.js'
+
+/** The list spans three of the four columns, leaving a quarter to the charts. */
+const LIST_COLUMNS = 3
 
 export interface BudgetViewDeps {
   /** Widget the edit dialog is presented on top of. */
@@ -27,7 +31,6 @@ export interface BudgetViewDeps {
   budgetStore: BudgetStore
   categoryStore: CategoryStore
   thresholdsStore: ThresholdsStore
-  preferencesStore: PreferencesStore
   notify: Notify
 }
 
@@ -36,11 +39,10 @@ export function createBudgetView({
   budgetStore,
   categoryStore,
   thresholdsStore,
-  preferencesStore,
   notify,
 }: BudgetViewDeps): DisposableComponent {
   const summary = createSummaryCards()
-  const charts = createChartsSection(preferencesStore)
+  const charts = createCategoryCharts()
   const guard = createWriteGuard(notify)
 
   /** Edit of a transaction that belongs to no series: nothing to arbitrate. */
@@ -55,6 +57,7 @@ export function createBudgetView({
   })
 
   const list = createTransactionList({
+    recurrenceOf: (transaction) => budgetStore.recurrenceOf(transaction),
     onEdit: (transaction) => {
       const recurrence = budgetStore.recurrenceOf(transaction)
 
@@ -85,18 +88,39 @@ export function createBudgetView({
         },
       })
     },
-    onDelete: (transaction) => guard(() => {
-      budgetStore.remove(transaction.id)
-      notify(transaction.recurrenceId === undefined
-        ? 'Transaction supprimée'
-        : 'Occurrence supprimée — elle réapparaîtra à la prochaine ouverture du mois')
-    }),
+    onDelete: (transaction) => {
+      const isOccurrence = transaction.recurrenceId !== undefined
+      const details = [
+        formatSignedAmount(transaction.kind, transaction.amount),
+        transaction.category,
+        formatDate(transaction.date),
+      ].join(' · ')
+
+      openConfirmDeleteDialog(parent, {
+        name: transaction.description || '(sans description)',
+        body: isOccurrence
+          ? `${details}\n\nCette transaction vient d’une récurrence : elle réapparaîtra `
+            + 'à la prochaine ouverture du mois. Pour qu’elle cesse d’être créée, '
+            + 'supprimez plutôt la récurrence dans les options.'
+          : `${details}\n\nElle sera retirée du mois définitivement.`,
+        onConfirm: () => guard(() => {
+          budgetStore.remove(transaction.id)
+          notify(isOccurrence
+            ? 'Occurrence supprimée — elle réapparaîtra à la prochaine ouverture du mois'
+            : 'Transaction supprimée')
+        }),
+      })
+    },
   })
+
+  // Homogeneous columns hand the charts exactly a quarter of the width.
+  const body = new Gtk.Grid({ columnHomogeneous: true, vexpand: true })
+  body.attach(list.widget, 0, 0, LIST_COLUMNS, 1)
+  body.attach(charts.widget, LIST_COLUMNS, 0, 1, 1)
 
   const root = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
   root.append(summary.widget)
-  root.append(charts.widget)
-  root.append(list.widget)
+  root.append(body)
 
   const render = () => {
     const { transactions } = budgetStore
@@ -117,7 +141,6 @@ export function createBudgetView({
     widget: root,
     dispose: () => {
       for (const unsubscribe of unsubscribes) unsubscribe()
-      charts.dispose()
     },
   }
 }

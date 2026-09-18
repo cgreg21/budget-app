@@ -54,6 +54,46 @@ export function sortByDateDesc(transactions: readonly Transaction[]): Transactio
   return [...transactions].sort((a, b) => b.date.localeCompare(a.date))
 }
 
+/** What the list is narrowed down to. `NO_FILTER` is the resting state. */
+export interface TransactionFilter {
+  /** Free text matched against the description and the category. */
+  search: string
+  /** `null` keeps both kinds. */
+  kind: TransactionKind | null
+  /** Category names to keep. Empty keeps every category. */
+  categories: readonly string[]
+}
+
+export const NO_FILTER: TransactionFilter = { search: '', kind: null, categories: [] }
+
+export function isFilterActive({ search, kind, categories }: TransactionFilter): boolean {
+  return search.trim() !== '' || kind !== null || categories.length > 0
+}
+
+/**
+ * Case and accents dropped, so a French budget can be searched from a plain
+ * keyboard: "electricite" finds « Électricité ». NFD splits each letter from
+ * its accent, which the combining marks are then stripped from.
+ */
+function fold(value: string): string {
+  return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+}
+
+/** The transactions a filter keeps, in the order they came in. */
+export function filterTransactions(
+  transactions: readonly Transaction[],
+  { search, kind, categories }: TransactionFilter,
+): Transaction[] {
+  const needle = fold(search.trim())
+  return transactions.filter((transaction) => (
+    (kind === null || transaction.kind === kind)
+    && (categories.length === 0 || categories.includes(transaction.category))
+    && (needle === ''
+      || fold(transaction.description).includes(needle)
+      || fold(transaction.category).includes(needle))
+  ))
+}
+
 export function computeTotals(transactions: readonly Transaction[]): Totals {
   let income = 0
   let expense = 0

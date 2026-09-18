@@ -55,9 +55,9 @@ export function createThresholdsGroup({ store, notify }: ThresholdsGroupOptions)
       + `jaune de y à z, vert à partir de z. Les seuils doivent respecter ${ORDER_RULE}.`,
   })
 
-  const lowRow = createAmountRow('Seuil orange (x)', 'En dessous : rouge')
-  const mediumRow = createAmountRow('Seuil jaune (y)', 'De x à y : orange')
-  const highRow = createAmountRow('Seuil vert (z)', 'De y à z : jaune, au-delà : vert')
+  const lowRow = createAmountRow('Seuil rouge', '')
+  const mediumRow = createAmountRow('Seuil orange', '')
+  const highRow = createAmountRow('Seuil jaune', '')
 
   const showStoredValues = () => {
     const { low, medium, high } = store.thresholds

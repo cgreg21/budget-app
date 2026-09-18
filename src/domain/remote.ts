@@ -73,9 +73,9 @@ export const REMOTE_SETTINGS_FILES: readonly string[] = [
 ]
 
 /**
- * `preferences.json` is missing from that list on purpose: it records how the
- * interface was left — the charts accordion — which belongs to this screen,
- * not to the budget. Sharing it would make two machines fight over it.
+ * `remote.json` is missing from that list on purpose: which server to talk to
+ * is a property of this machine, not of the budget — and a budget that
+ * carried its own address could never be pointed at another one.
  */
 export const MONTHS_DIR_NAME = 'months'
 

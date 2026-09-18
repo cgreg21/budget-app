@@ -54,9 +54,8 @@ describe('constants', () => {
     expect(REMOTE_PROVIDER_KINDS).toEqual(['webdav'])
   })
 
-  it('mirrors the settings files but keeps the interface state out', () => {
+  it('mirrors the settings files but keeps the server settings out', () => {
     expect(REMOTE_SETTINGS_FILES).toEqual(['categories.json', 'thresholds.json', 'recurrences.json'])
-    expect(REMOTE_SETTINGS_FILES).not.toContain('preferences.json')
     expect(REMOTE_SETTINGS_FILES).not.toContain('remote.json')
     expect(MONTHS_DIR_NAME).toBe('months')
   })

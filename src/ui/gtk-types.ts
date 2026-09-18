@@ -19,6 +19,7 @@ export type GtkWindow = InstanceType<typeof Gtk.Window>
 export type GtkAdjustment = InstanceType<typeof Gtk.Adjustment>
 export type GtkBox = InstanceType<typeof Gtk.Box>
 export type GtkButton = InstanceType<typeof Gtk.Button>
+export type GtkCheckButton = InstanceType<typeof Gtk.CheckButton>
 export type GtkImage = InstanceType<typeof Gtk.Image>
 export type GtkLabel = InstanceType<typeof Gtk.Label>
 export type GtkListBox = InstanceType<typeof Gtk.ListBox>

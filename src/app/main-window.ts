@@ -16,7 +16,6 @@ import Adw from 'gi:Adw-1'
 
 import type { BudgetStore } from '../data/budget-store.js'
 import type { CategoryStore } from '../data/category-store.js'
-import type { PreferencesStore } from '../data/preferences-store.js'
 import type { RecurrenceStore } from '../data/recurrence-store.js'
 import type { RemoteStorage } from '../data/remote/remote-storage.js'
 import type { ThresholdsStore } from '../data/thresholds-store.js'
@@ -37,7 +36,8 @@ import { createIconButton } from '../ui/widgets.js'
 import { createWriteGuard } from '../ui/write-guard.js'
 import { APP_NAME } from './app-info.js'
 
-const WINDOW_WIDTH = 760
+// Wide enough for the transaction list and the charts column side by side.
+const WINDOW_WIDTH = 1000
 const WINDOW_HEIGHT = 820
 
 export interface MainWindowDeps {
@@ -46,7 +46,6 @@ export interface MainWindowDeps {
   categoryStore: CategoryStore
   thresholdsStore: ThresholdsStore
   recurrenceStore: RecurrenceStore
-  preferencesStore: PreferencesStore
   remoteStorage: RemoteStorage
 }
 
@@ -185,7 +184,6 @@ export function createMainWindow({
   categoryStore,
   thresholdsStore,
   recurrenceStore,
-  preferencesStore,
   remoteStorage,
 }: MainWindowDeps): MainWindow {
   const window = new Adw.ApplicationWindow({ application })
@@ -200,7 +198,6 @@ export function createMainWindow({
     budgetStore,
     categoryStore,
     thresholdsStore,
-    preferencesStore,
     notify,
   })
   toasts.setChild(budgetView.widget)

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+
+import type { Recurrence } from '../../src/domain/recurrence.js'
 import {
   formatAmount,
   formatDate,
@@ -6,6 +8,7 @@ import {
   formatMonth,
   formatMonthName,
   formatPercent,
+  formatRecurrencePeriod,
   formatShortMonthName,
   formatSignedAmount,
 } from '../../src/ui/format.js'
@@ -88,5 +91,37 @@ describe('formatFrequency', () => {
     expect(formatFrequency('monthly')).toBe('Mensuelle')
     expect(formatFrequency('quarterly')).toBe('Trimestrielle')
     expect(formatFrequency('yearly')).toBe('Annuelle')
+  })
+})
+
+describe('formatRecurrencePeriod', () => {
+  const series: Recurrence = {
+    id: 'r1',
+    description: 'Loyer',
+    category: 'Logement',
+    kind: 'expense',
+    amount: 800,
+    day: 5,
+    frequency: 'monthly',
+    startMonth: '2026-09',
+  }
+
+  it('announces an open-ended series by its start', () => {
+    expect(formatRecurrencePeriod(series)).toBe('à partir de Septembre 2026')
+  })
+
+  it('spells out the span of a limited series', () => {
+    expect(formatRecurrencePeriod({ ...series, occurrences: 12 }))
+      .toBe('Septembre 2026 → Août 2027 (12 fois)')
+  })
+
+  it('counts a quarterly series in quarters', () => {
+    expect(formatRecurrencePeriod({ ...series, frequency: 'quarterly', occurrences: 4 }))
+      .toBe('Septembre 2026 → Juin 2027 (4 fois)')
+  })
+
+  it('reduces a single occurrence to its own month', () => {
+    expect(formatRecurrencePeriod({ ...series, occurrences: 1 }))
+      .toBe('Septembre 2026 → Septembre 2026 (1 fois)')
   })
 })

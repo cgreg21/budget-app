@@ -19,6 +19,7 @@ import { iconLabel } from '../icons.js'
 import type { Notify } from '../types.js'
 import { createRowActionButton } from '../widgets.js'
 import { createWriteGuard } from '../write-guard.js'
+import { openConfirmDeleteDialog } from './confirm-delete-dialog.js'
 import { openIconPickerDialog } from './icon-picker-dialog.js'
 
 export interface CategoriesGroupsOptions {
@@ -131,10 +132,24 @@ function createCategoryRow(
   row.addSuffix(createRowActionButton({
     iconName: 'user-trash-symbolic',
     tooltip: 'Supprimer cette catégorie',
-    onClick: () => guard(() => {
-      if (store.remove(name)) notify('Catégorie supprimée')
-      else notify('Il faut conserver au moins une catégorie')
-    }),
+    onClick: () => {
+      // Asked before the dialog rather than after: there is no point making
+      // someone confirm a deletion the store is going to refuse anyway.
+      if (store.categories.length <= 1) {
+        notify('Il faut conserver au moins une catégorie')
+        return
+      }
+
+      openConfirmDeleteDialog(parent, {
+        name,
+        body: 'Les transactions déjà enregistrées gardent cette catégorie : '
+          + 'seule la liste proposée à la saisie change.',
+        onConfirm: () => guard(() => {
+          if (store.remove(name)) notify('Catégorie supprimée')
+          else notify('Il faut conserver au moins une catégorie')
+        }),
+      })
+    },
   }))
 
   return row

@@ -92,7 +92,6 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │   ├── month.ts                  #   month keys ("2026-09"), arithmetic, bounds, ordering
 │   │   ├── balance.ts                #   thresholds (x < y < z) and balance bands
 │   │   ├── recurrence.ts             #   recurring templates and the occurrences they owe
-│   │   ├── preferences.ts            #   remembered interface state
 │   │   ├── backup.ts                 #   the backup archive: shape, checks, merge
 │   │   ├── csv.ts                    #   transactions as a spreadsheet sees them
 │   │   ├── remote.ts                 #   the rules of the remote storage (paths, status, read-only)
@@ -106,7 +105,6 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │   ├── legacy-migration.ts       #   splits an old transactions.json by month
 │   │   ├── thresholds-store.ts       #   thresholds.json
 │   │   ├── recurrence-store.ts       #   recurrences.json
-│   │   ├── preferences-store.ts      #   preferences.json
 │   │   ├── backup-service.ts         #   import / export, JSON archive and CSV
 │   │   ├── category-store.ts         #   categories.json
 │   │   └── remote/                   #   the cloud: server as reference, files as cache
@@ -128,9 +126,10 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │   │   ├── budget-view.ts        #     window content, wired to the store
 │   │   │   ├── month-switcher.ts     #     ‹ Septembre 2026 › navigator + month picker
 │   │   │   ├── summary-cards.ts      #     balance (colour-banded) / income / expenses
-│   │   │   ├── category-charts.ts    #     pie charts by category
-│   │   │   ├── charts-section.ts     #     the accordion folding the charts away
+│   │   │   ├── category-charts.ts    #     pie charts by category, in the side column
 │   │   │   ├── transaction-list.ts   #     list + empty state
+│   │   │   ├── transaction-filters.ts #    search field, kind + categories, reset
+│   │   │   ├── list-total.ts        #     count and total of the shown rows
 │   │   │   └── transaction-row.ts    #     a single row
 │   │   └── dialogs/
 │   │       ├── form-dialog.ts        #     shell shared by the "new / edit" forms
@@ -138,6 +137,7 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │       ├── icon-picker-dialog.ts #     the icon grid for a category
 │   │       ├── transaction-dialog.ts #     add / edit a transaction, repetition included
 │   │       ├── edit-scope-dialog.ts  #     "cette occurrence ou toute la série ?"
+│   │       ├── confirm-delete-dialog.ts # "supprimer « … » ?", before every deletion
 │   │       ├── recurrence-dialog.ts  #     add / edit a recurrence
 │   │       ├── occurrence-count-field.ts # optional "how many times?" field
 │   │       ├── options-dialog.ts     #     the options window: one tab per section
@@ -173,11 +173,15 @@ Cette application permet de suivre revenus et dépenses, **mois par mois** :
 
 - Navigation entre les mois via la barre d'en-tête : flèches ‹ › d'un mois à l'autre, et menu déroulant proposant un sélecteur d'année ‹ 2026 › avec la grille des douze mois. **N'importe quel mois, passé ou futur, peut être affiché**, qu'il contienne des données ou non ; un point signale ceux qui en contiennent et un raccourci ramène au mois courant.
 - **Tout mois chargé est modifiable** : ajout, modification (clic sur une ligne ou icône crayon) et suppression s'appliquent au mois affiché.
+- **Toute suppression demande confirmation** : transaction, récurrence ou catégorie, le bouton corbeille ouvre d'abord une alerte nommant l'élément visé et rappelant ce que l'opération emporte — et ce qu'elle épargne. Le bouton *Supprimer* y est marqué comme destructeur et n'est jamais la réponse par défaut : Entrée ou Échap annulent.
 - Ajout d'une transaction (revenu ou dépense) via le bouton **+**, avec description, montant, catégorie, type **et répétition** (Ponctuelle, Mensuelle, Trimestrielle, Annuelle). Elle est datée du jour si le mois courant est affiché, sinon du 1er du mois affiché — elle se range donc toujours dans le mois consulté.
 - Résumé du mois affiché : solde, total des revenus, total des dépenses.
+- **Barre de filtres au-dessus de la liste** : un champ de recherche (sur la description **et** la catégorie, insensible à la casse **et aux accents** — `electricite` trouve « Électricité »), un menu **Tous / Revenus / Dépenses**, un menu **de catégories à choix multiple** (cases à cocher ; son libellé indique « Toutes », la catégorie retenue, ou « 3 catégories »), et un bouton croix qui remet le tout à zéro (actif seulement quand un filtre l'est). Le filtre ne change que ce qui est affiché : résumé et graphiques continuent de décrire le mois entier, et il reste en place d'un mois à l'autre pour suivre une dépense dans le temps. Si plus rien ne correspond, la liste l'annonce au lieu de paraître vide. Renommer ou supprimer une catégorie cochée décoche simplement celle-ci.
+- **Sous la liste, un total de ce qui est affiché** : le nombre de lignes (« 12 transactions sur 34 » dès qu'un filtre est posé) et leur montant, vert ou rouge selon le signe. C'est un **solde**, pas une somme : une liste mêlant revenus et dépenses additionnerait sinon un salaire à un loyer. Filtrée sur un seul type, elle se lit donc comme le total de ce type.
+- **Chaque ligne de la liste porte une bordure de couleur à gauche** : verte pour un revenu, rouge pour une dépense. Le montant suit la même règle, et l'icône de catégorie apparaît **en blanc sur une pastille ronde de cette couleur**.
 - **Le solde prend une couleur de fond selon son montant** : rouge en dessous de `x`, orange de `x` à `y`, jaune de `y` à `z`, vert à partir de `z`.
-- Graphiques en camembert des dépenses et des revenus par catégorie, pour le mois affiché, regroupés dans un **accordéon « Graphiques »** : un clic sur l'en-tête les masque pour laisser toute la place à la liste. L'état plié/déplié est **mémorisé d'une session à l'autre**.
-- **Transactions récurrentes** (loyer, salaire, abonnement…) : fréquence **mensuelle, trimestrielle ou annuelle**, jour du mois et mois de départ. Chaque occurrence est créée automatiquement **à l'ouverture du mois concerné** et signalée par une icône ⟳ dans la liste. Le jour est ramené au dernier jour des mois plus courts (un 31 devient le 28 en février). Supprimer une occurrence la fait réapparaître à la prochaine ouverture du mois ; supprimer la récurrence ne touche pas aux transactions déjà créées.
+- Graphiques en camembert des dépenses et des revenus par catégorie, pour le mois affiché, présentés dans une **colonne à droite de la liste des transactions** : elle occupe un quart de la largeur de la fenêtre, et les deux camemberts s'y partagent la hauteur à parts égales.
+- **Transactions récurrentes** (loyer, salaire, abonnement…) : fréquence **mensuelle, trimestrielle ou annuelle**, jour du mois et mois de départ. Chaque occurrence est créée automatiquement **à l'ouverture du mois concerné** et posée sur un **fond plus sombre** dans la liste ; **la survoler affiche un panneau** rappelant la série dont elle vient — fréquence, jour, période et date de l'occurrence. Le jour est ramené au dernier jour des mois plus courts (un 31 devient le 28 en février). Supprimer une occurrence la fait réapparaître à la prochaine ouverture du mois ; supprimer la récurrence ne touche pas aux transactions déjà créées.
 - La répétition se règle **directement depuis la transaction** : choisir une fréquence lors de l'ajout crée la série (même jour, à partir de ce mois-ci) ; la choisir en modification transforme la transaction en première occurrence ; revenir à « Ponctuelle » arrête la série.
 - Une série est **illimitée par défaut**, mais peut recevoir une **durée** : activer « Durée limitée » puis indiquer un **nombre d'occurrences** (1 à 600, par exemple 12 fois). La série s'arrête alors d'elle-même ; l'onglet Récurrences affiche la période complète (« Janvier 2033 → Décembre 2033 (12 fois) »). Le nombre reste modifiable à tout moment, pour allonger, raccourcir ou revenir à l'illimité.
 - À l'enregistrement d'une transaction récurrente, l'application **demande la portée** : *cette occurrence* (la récurrence reste inchangée) ou *toute la série* (le modèle suit, les mois à venir aussi). Un changement de fréquence ne peut porter que sur la série ; le jour et le mois de départ de la série sont préservés.
@@ -198,7 +202,6 @@ budget-app/
 ├── categories.json     # la liste des catégories : nom + icône
 ├── thresholds.json     # les seuils x / y / z du solde
 ├── recurrences.json    # les transactions récurrentes
-├── preferences.json    # l'état de l'interface (accordéon des graphiques)
 ├── remote.json         # le serveur distant, s'il y en a un — jamais synchronisé
 └── months/
     ├── 2026-08.json    # un fichier par mois — l'historique
@@ -253,8 +256,7 @@ de s'appliquer. Le cache ne peut donc jamais s'écarter de la référence. Une
 tentative de reconnexion a lieu chaque minute ; le bouton « Synchroniser » de
 l'onglet Cloud la déclenche immédiatement.
 
-Le dossier distant reproduit le dossier local, aux deux exceptions près que sont
-`preferences.json` (l'état de l'interface appartient à la machine) et
+Le dossier distant reproduit le dossier local, à l'exception près de
 `remote.json` (qui doit rester modifiable même serveur injoignable, sans quoi
 une adresse mal saisie enfermerait l'application hors de ses propres réglages) :
 

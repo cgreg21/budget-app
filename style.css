@@ -21,12 +21,52 @@
   font-family: monospace;
 }
 
+/* Income green / expense red, on the amounts and the category icons alike. */
 .budget-income {
   color: #26a269;
 }
 
 .budget-expense {
   color: #c01c28;
+}
+
+/* Category icon in a coloured disc: white symbol on green or red. */
+.budget-icon {
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 9999px;
+  color: #ffffff;
+}
+
+.budget-icon-income {
+  background-color: #26a269;
+}
+
+.budget-icon-expense {
+  background-color: #c01c28;
+}
+
+/* Transaction rows: a coloured edge tells income from expense at a glance. */
+.budget-row-income {
+  border-left: 4px solid transparent;
+}
+
+.budget-row-expense {
+  border-left: 4px solid transparent;
+}
+
+/* Rows produced by a recurrence stand on a darker background. */
+.budget-row-recurring {
+  border-left: 4px solid #f6d32d;
+}
+
+/*
+ * The hover panel describing a recurrence. A popover paints its frame on the
+ * `contents` node, not on the popover itself, so the breathing room has to be
+ * set there — padding on `.budget-details` alone would land outside the frame.
+ */
+popover.budget-details > contents {
+  padding: 15px;
 }
 
 /* Balance card background, by band — see domain/balance.ts. */

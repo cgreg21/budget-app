@@ -4,7 +4,7 @@
  */
 
 import type { MonthKey } from '../domain/month.js'
-import type { RecurrenceFrequency } from '../domain/recurrence.js'
+import { endMonth, type Recurrence, type RecurrenceFrequency } from '../domain/recurrence.js'
 import type { TransactionKind } from '../domain/transaction.js'
 
 const currencyFormatter = new Intl.NumberFormat('fr-FR', {
@@ -77,4 +77,15 @@ export function formatMonthName(monthNumber: number): string {
 
 export function formatFrequency(frequency: RecurrenceFrequency): string {
   return FREQUENCY_LABELS[frequency]
+}
+
+/**
+ * The span a series covers: "à partir de Septembre 2026" while it never ends,
+ * "Septembre 2026 → Août 2027 (12 fois)" once it is limited.
+ */
+export function formatRecurrencePeriod(recurrence: Recurrence): string {
+  const end = endMonth(recurrence)
+  return end === undefined
+    ? `à partir de ${formatMonth(recurrence.startMonth)}`
+    : `${formatMonth(recurrence.startMonth)} → ${formatMonth(end)} (${recurrence.occurrences} fois)`
 }

@@ -5,7 +5,7 @@ import Gtk from 'gi:Gtk-4.0'
 
 import type { GtkBox, GtkButton, GtkListBox } from './gtk-types.js'
 
-/** Marks everything that comes from a recurrence: list rows, options tab. */
+/** Marks the recurrences tab of the options dialog. */
 export const RECURRING_ICON = 'media-playlist-repeat-symbolic'
 
 export interface IconButtonOptions {

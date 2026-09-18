@@ -12,12 +12,17 @@ import Adw from 'gi:Adw-1'
 import type { CategoryStore } from '../../data/category-store.js'
 import type { RecurrenceStore } from '../../data/recurrence-store.js'
 import type { MonthKey } from '../../domain/month.js'
-import { endMonth, type Recurrence } from '../../domain/recurrence.js'
-import { formatFrequency, formatMonth, formatSignedAmount } from '../format.js'
+import type { Recurrence } from '../../domain/recurrence.js'
+import {
+  formatFrequency,
+  formatRecurrencePeriod,
+  formatSignedAmount,
+} from '../format.js'
 import type { AdwPreferencesGroup, GtkWidget } from '../gtk-types.js'
 import type { Notify } from '../types.js'
 import { createRowActionButton } from '../widgets.js'
 import { createWriteGuard } from '../write-guard.js'
+import { openConfirmDeleteDialog } from './confirm-delete-dialog.js'
 import { openRecurrenceDialog } from './recurrence-dialog.js'
 
 export interface RecurrencesGroupOptions {
@@ -37,13 +42,10 @@ export interface RecurrencesGroup {
 }
 
 function describe(recurrence: Recurrence): string {
-  const end = endMonth(recurrence)
   return [
     formatFrequency(recurrence.frequency),
     `le ${recurrence.day}`,
-    end === undefined
-      ? `à partir de ${formatMonth(recurrence.startMonth)}`
-      : `${formatMonth(recurrence.startMonth)} → ${formatMonth(end)} (${recurrence.occurrences} fois)`,
+    formatRecurrencePeriod(recurrence),
     recurrence.category,
   ].join(' · ')
 }
@@ -99,9 +101,14 @@ export function createRecurrencesGroup({
     row.addSuffix(createRowActionButton({
       iconName: 'user-trash-symbolic',
       tooltip: 'Supprimer cette récurrence',
-      onClick: () => guard(() => {
-        store.remove(recurrence.id)
-        notify('Récurrence supprimée — les transactions déjà créées sont conservées')
+      onClick: () => openConfirmDeleteDialog(parent, {
+        name: recurrence.description || '(sans description)',
+        body: 'Les transactions déjà ajoutées aux mois ouverts sont conservées : '
+          + 'seules les prochaines ne seront plus créées.',
+        onConfirm: () => guard(() => {
+          store.remove(recurrence.id)
+          notify('Récurrence supprimée — les transactions déjà créées sont conservées')
+        }),
       }),
     }))
 

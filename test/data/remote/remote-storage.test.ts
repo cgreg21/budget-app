@@ -268,7 +268,7 @@ describe('first connection to an empty account', () => {
   })
 
   it('ignores local files that are not part of the budget', async () => {
-    writeJson(localPath('preferences.json'), { chartsExpanded: true })
+    writeJson(localPath('notes.json'), { kept: true })
     writeText(localPath('months', 'notes.txt'), 'x')
 
     const { storage } = await createStorage()
@@ -320,14 +320,14 @@ describe('filling the cache from the server', () => {
   })
 
   it('leaves files it does not manage alone', async () => {
-    writeJson(localPath('preferences.json'), { chartsExpanded: true })
+    writeJson(localPath('notes.json'), { kept: true })
     writeText(localPath('months', 'notes.txt'), 'garder')
     provider.files.set('budget-app/categories.json', '[]')
 
     const { storage } = await createStorage()
     await storage.connect()
 
-    expect(fs.existsSync(localPath('preferences.json'))).toBe(true)
+    expect(fs.existsSync(localPath('notes.json'))).toBe(true)
     expect(readLocal('months', 'notes.txt')).toBe('garder')
   })
 
@@ -436,7 +436,7 @@ describe('pushFile', () => {
   })
 
   it.each([
-    ['the interface state', ['preferences.json']],
+    ['a stray file in the data directory', ['notes.json']],
     ['the server settings', ['remote.json']],
     ['a stray file in months', ['months', 'notes.txt']],
     ['a file nested too deep', ['months', '2026', '09.json']],
@@ -543,7 +543,7 @@ describe('removeFile', () => {
     await storage.connect()
     const remove = vi.spyOn(provider, 'remove')
 
-    storage.removeFile(localPath('preferences.json'))
+    storage.removeFile(localPath('notes.json'))
     await storage.flush()
 
     expect(remove).not.toHaveBeenCalled()

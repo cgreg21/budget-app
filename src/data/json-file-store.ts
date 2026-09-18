@@ -15,8 +15,8 @@
  *
  * When a remote server holds the budget, these files are only its cache: a
  * commit is refused while the server is unreachable, and mirrored to it
- * otherwise. Files marked `localOnly` — the interface state, the server
- * settings themselves — stay out of that and remain writable offline.
+ * otherwise. Files marked `localOnly` — the server settings themselves —
+ * stay out of that and remain writable offline.
  */
 import fs from 'node:fs'
 import path from 'node:path'

@@ -1,6 +1,7 @@
 /*
- * ui/views/category-charts.ts — side-by-side pie charts of expenses and
- * income, broken down by category.
+ * ui/views/category-charts.ts — stacked pie charts of expenses and income,
+ * broken down by category. They fill the column standing beside the
+ * transaction list, half of its height each.
  *
  * The slices are computed by the domain layer (`sumByCategory`); this module
  * only assigns colours and paints them with Cairo on a Gtk.DrawingArea.
@@ -29,6 +30,8 @@ const PALETTE: readonly Rgb[] = [
 
 const EMPTY_PIE_ALPHA = 0.08
 const PIE_PADDING = 6
+/** Floor for the pie; above it the chart grows with the column. */
+const PIE_MIN_SIZE = 120
 const SWATCH_SIZE = 12
 
 interface Slice {
@@ -51,10 +54,11 @@ function sumSlices(slices: readonly Slice[]): number {
 
 function createPie(slices: () => readonly Slice[]) {
   const area = new Gtk.DrawingArea({
-    contentWidth: 200,
-    contentHeight: 200,
+    contentWidth: PIE_MIN_SIZE,
+    contentHeight: PIE_MIN_SIZE,
     hexpand: true,
-    valign: Gtk.Align.CENTER,
+    // Soaks up whatever the title and the legend leave in the card.
+    vexpand: true,
   })
 
   area.setDrawFunc((_area, cr, width, height) => {
@@ -121,6 +125,14 @@ function createPieChart(title: string): Component<readonly Slice[]> {
   const area = createPie(() => slices)
   const legend = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4, marginTop: 8 })
 
+  // With the card's height now fixed, a long category list scrolls instead of
+  // crushing the pie.
+  const legendScroller = new Gtk.ScrolledWindow({
+    hscrollbarPolicy: Gtk.PolicyType.NEVER,
+    propagateNaturalHeight: true,
+  })
+  legendScroller.setChild(legend)
+
   const container = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
     spacing: 8,
@@ -129,7 +141,7 @@ function createPieChart(title: string): Component<readonly Slice[]> {
   })
   container.append(new Gtk.Label({ label: title, cssClasses: ['title-4'], xalign: 0 }))
   container.append(area)
-  container.append(legend)
+  container.append(legendScroller)
 
   return {
     widget: container,
@@ -153,10 +165,12 @@ function createPieChart(title: string): Component<readonly Slice[]> {
 
 export function createCategoryCharts(): Component<readonly Transaction[]> {
   const container = new Gtk.Box({
-    orientation: Gtk.Orientation.HORIZONTAL,
+    orientation: Gtk.Orientation.VERTICAL,
     spacing: 12,
-    marginTop: 8, // the surrounding accordion owns the outer margins
-    homogeneous: true,
+    marginEnd: 12,
+    marginBottom: 12,
+    homogeneous: true, // half of the column's height each
+    vexpand: true,
   })
 
   const expenseChart = createPieChart('Dépenses par catégorie')

@@ -7,7 +7,6 @@
  *
  *   budget-app/
  *   ├── categories.json
- *   ├── preferences.json
  *   ├── recurrences.json
  *   ├── remote.json
  *   ├── thresholds.json
@@ -38,9 +37,6 @@ export const THRESHOLDS_FILE = path.join(DATA_DIR, 'thresholds.json')
 
 /** Templates replayed into every month they are due in. */
 export const RECURRENCES_FILE = path.join(DATA_DIR, 'recurrences.json')
-
-/** Interface state kept from one run to the next, e.g. the charts accordion. */
-export const PREFERENCES_FILE = path.join(DATA_DIR, 'preferences.json')
 
 /** Which server the budget is stored on, if any. Never holds the password. */
 export const REMOTE_CONFIG_FILE = path.join(DATA_DIR, 'remote.json')

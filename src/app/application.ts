@@ -16,7 +16,6 @@ import { styles } from 'node-gtk/styles'
 
 import { BudgetStore } from '../data/budget-store.js'
 import { CategoryStore } from '../data/category-store.js'
-import { PreferencesStore } from '../data/preferences-store.js'
 import { RecurrenceStore } from '../data/recurrence-store.js'
 import { setRemoteGateway } from '../data/remote/gateway.js'
 import { RemoteConfigStore } from '../data/remote/remote-config-store.js'
@@ -75,14 +74,12 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
     const budgetStore = new BudgetStore(recurrenceStore)
     const categoryStore = new CategoryStore()
     const thresholdsStore = new ThresholdsStore()
-    const preferencesStore = new PreferencesStore()
     const mainWindow = createMainWindow({
       application,
       budgetStore,
       categoryStore,
       thresholdsStore,
       recurrenceStore,
-      preferencesStore,
       remoteStorage,
     })
 
@@ -95,7 +92,6 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
       categoryStore.dispose()
       thresholdsStore.dispose()
       recurrenceStore.dispose()
-      preferencesStore.dispose()
       setRemoteGateway(null)
       remoteStorage.dispose()
       remoteConfigStore.dispose()

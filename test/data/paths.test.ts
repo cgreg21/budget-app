@@ -27,7 +27,7 @@ describe('data directory layout', () => {
     expect(paths.CATEGORIES_FILE).toBe(path.join(temp.dataDir, 'categories.json'))
     expect(paths.THRESHOLDS_FILE).toBe(path.join(temp.dataDir, 'thresholds.json'))
     expect(paths.RECURRENCES_FILE).toBe(path.join(temp.dataDir, 'recurrences.json'))
-    expect(paths.PREFERENCES_FILE).toBe(path.join(temp.dataDir, 'preferences.json'))
+    expect(paths.REMOTE_CONFIG_FILE).toBe(path.join(temp.dataDir, 'remote.json'))
     expect(paths.LEGACY_TRANSACTIONS_FILE).toBe(path.join(temp.dataDir, 'transactions.json'))
   })
 })
