@@ -14,6 +14,7 @@ import Adw from 'gi:Adw-1'
 
 import type { CategoryStore } from '../../data/category-store.js'
 import { DEFAULT_CATEGORY_ICON, type Category } from '../../domain/category.js'
+import { t } from '../../i18n/index.js'
 import type { AdwEntryRow, AdwPreferencesGroup, GtkButton, GtkWidget } from '../gtk-types.js'
 import { iconLabel } from '../icons.js'
 import type { Notify } from '../types.js'
@@ -36,7 +37,7 @@ export interface CategoriesGroups {
 }
 
 function iconTooltip(icon: string): string {
-  return `Icône : ${iconLabel(icon)} — cliquer pour changer`
+  return t().categoriesGroup.iconTooltip(iconLabel(icon))
 }
 
 /** The icon of a row, as a button opening the picker. */
@@ -69,8 +70,9 @@ function createAddGroup(
   parent: GtkWidget,
   notify: Notify,
 ): AdwPreferencesGroup {
-  const group = new Adw.PreferencesGroup({ title: 'Nouvelle catégorie' })
-  const entry = new Adw.EntryRow({ title: 'Nom' })
+  const strings = t().categoriesGroup
+  const group = new Adw.PreferencesGroup({ title: strings.newCategoryTitle })
+  const entry = new Adw.EntryRow({ title: strings.nameFieldTitle })
 
   let icon = DEFAULT_CATEGORY_ICON
   const iconButton = createIconButton(icon, parent, (next) => { icon = next })
@@ -82,7 +84,7 @@ function createAddGroup(
 
     createWriteGuard(notify)(() => {
       if (!store.add(name, icon)) {
-        notify(`La catégorie « ${name} » existe déjà`)
+        notify(strings.alreadyExists(name))
         return
       }
 
@@ -90,13 +92,13 @@ function createAddGroup(
       icon = DEFAULT_CATEGORY_ICON
       iconButton.iconName = icon
       iconButton.setTooltipText(iconTooltip(icon))
-      notify('Catégorie ajoutée')
+      notify(strings.added)
     })
   }
 
   entry.addSuffix(createRowActionButton({
     iconName: 'list-add-symbolic',
-    tooltip: 'Ajouter',
+    tooltip: strings.addTooltip,
     onClick: submit,
   }))
   entry.on('apply', submit) // also fires when pressing Enter
@@ -111,42 +113,42 @@ function createCategoryRow(
   parent: GtkWidget,
   notify: Notify,
 ): AdwEntryRow {
-  const row = new Adw.EntryRow({ title: 'Nom', text: name, showApplyButton: true })
+  const strings = t().categoriesGroup
+  const row = new Adw.EntryRow({ title: strings.nameFieldTitle, text: name, showApplyButton: true })
   const guard = createWriteGuard(notify)
 
   row.addPrefix(createIconButton(icon, parent, (next) => guard(() => {
-    if (store.setIcon(name, next)) notify('Icône modifiée')
+    if (store.setIcon(name, next)) notify(strings.iconChanged)
   })))
 
   row.on('apply', () => guard(() => {
     const newName = row.text.trim()
     if (newName === name) return
     if (!newName || !store.rename(name, newName)) {
-      if (newName) notify(`La catégorie « ${newName} » existe déjà`)
+      if (newName) notify(strings.alreadyExists(newName))
       row.text = name // revert: the store refused the change
       return
     }
-    notify('Catégorie renommée')
+    notify(strings.renamed)
   }))
 
   row.addSuffix(createRowActionButton({
     iconName: 'user-trash-symbolic',
-    tooltip: 'Supprimer cette catégorie',
+    tooltip: strings.deleteTooltip,
     onClick: () => {
       // Asked before the dialog rather than after: there is no point making
       // someone confirm a deletion the store is going to refuse anyway.
       if (store.categories.length <= 1) {
-        notify('Il faut conserver au moins une catégorie')
+        notify(strings.mustKeepOne)
         return
       }
 
       openConfirmDeleteDialog(parent, {
         name,
-        body: 'Les transactions déjà enregistrées gardent cette catégorie : '
-          + 'seule la liste proposée à la saisie change.',
+        body: strings.deleteBody,
         onConfirm: () => guard(() => {
-          if (store.remove(name)) notify('Catégorie supprimée')
-          else notify('Il faut conserver au moins une catégorie')
+          if (store.remove(name)) notify(strings.deleted)
+          else notify(strings.mustKeepOne)
         }),
       })
     },
@@ -160,7 +162,7 @@ export function createCategoriesGroups({
   parent,
   notify,
 }: CategoriesGroupsOptions): CategoriesGroups {
-  const listGroup = new Adw.PreferencesGroup({ title: 'Catégories existantes' })
+  const listGroup = new Adw.PreferencesGroup({ title: t().categoriesGroup.existingCategoriesTitle })
   let rows: AdwEntryRow[] = []
 
   const renderList = () => {

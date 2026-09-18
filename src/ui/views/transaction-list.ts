@@ -24,6 +24,7 @@ import {
   type TransactionFilter,
 } from '../../domain/transaction.js'
 import type { Component } from '../types.js'
+import { t } from '../../i18n/index.js'
 import { clearListBox } from '../widgets.js'
 import { createListTotal } from './list-total.js'
 import { createTransactionFilters } from './transaction-filters.js'
@@ -50,15 +51,15 @@ export function createTransactionList(
 
   const emptyState = new Adw.StatusPage({
     iconName: 'accessories-calculator-symbolic',
-    title: 'Aucune transaction',
-    description: 'Cliquez sur « + » pour ajouter un revenu ou une dépense à ce mois.',
+    title: t().transactionList.emptyTitle,
+    description: t().transactionList.emptyDescription,
     vexpand: true,
   })
 
   const noMatchState = new Adw.StatusPage({
     iconName: 'system-search-symbolic',
-    title: 'Aucun résultat',
-    description: 'Ce mois contient des transactions, mais aucune ne correspond au filtre.',
+    title: t().transactionList.noMatchTitle,
+    description: t().transactionList.noMatchDescription,
     vexpand: true,
   })
 

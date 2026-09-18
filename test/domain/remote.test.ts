@@ -12,7 +12,6 @@ import {
   MONTHS_DIR_NAME,
   REMOTE_PROVIDER_KINDS,
   REMOTE_SETTINGS_FILES,
-  describeStatus,
   isRemoteActive,
   isRemoteConfig,
   isRemoteConfigComplete,
@@ -228,45 +227,5 @@ describe('remoteUrl', () => {
 
   it('returns the base alone for an empty path', () => {
     expect(remoteUrl('https://cloud.example.org/dav/', '')).toBe('https://cloud.example.org/dav')
-  })
-})
-
-describe('describeStatus', () => {
-  it('names the local case', () => {
-    expect(describeStatus({ state: 'disabled' })).toBe('Stockage local — aucun serveur configuré')
-  })
-
-  it('names the transient case', () => {
-    expect(describeStatus({ state: 'connecting' })).toBe('Connexion au serveur…')
-  })
-
-  it('reports the read-only case', () => {
-    expect(describeStatus({ state: 'offline' })).toBe('Hors ligne — budget en lecture seule')
-  })
-
-  it('repeats the server message when there is one', () => {
-    expect(describeStatus({ state: 'error', message: 'identifiants refusés' }))
-      .toBe('identifiants refusés')
-  })
-
-  it('falls back to a generic message when the error has none', () => {
-    expect(describeStatus({ state: 'error' })).toBe('Erreur de connexion')
-  })
-
-  it('mentions the last synchronisation when one happened', () => {
-    const described = describeStatus({
-      state: 'online',
-      lastSyncedAt: '2026-09-18T08:30:00.000Z',
-    })
-    expect(described).toMatch(/^Connecté — dernière synchronisation à \d{2}:\d{2}$/)
-  })
-
-  it('stays terse before the first synchronisation', () => {
-    expect(describeStatus({ state: 'online' })).toBe('Connecté')
-  })
-
-  it('shows an unparsable timestamp as it came', () => {
-    expect(describeStatus({ state: 'online', lastSyncedAt: 'plus tard' }))
-      .toBe('Connecté — dernière synchronisation à plus tard')
   })
 })

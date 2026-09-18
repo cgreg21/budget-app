@@ -30,6 +30,7 @@ import {
   type RecurrenceInput,
 } from '../../domain/recurrence.js'
 import type { TransactionKind } from '../../domain/transaction.js'
+import { t } from '../../i18n/index.js'
 import { formatFrequency, formatMonthName } from '../format.js'
 import type { AdwSpinRow, GtkAdjustment, GtkWidget } from '../gtk-types.js'
 import { createCategoryCombo } from './category-combo.js'
@@ -57,7 +58,7 @@ interface RecurrenceForm {
 }
 
 function defaultDescription(kind: TransactionKind): string {
-  return kind === 'income' ? 'Revenu récurrent' : 'Dépense récurrente'
+  return t().recurrenceDialog.defaultDescription(kind)
 }
 
 function createSpinRow(title: string, subtitle: string, adjustment: GtkAdjustment): AdwSpinRow {
@@ -70,26 +71,27 @@ function createForm(
   defaultMonth: MonthKey,
 ): RecurrenceForm {
   const startMonth = recurrence?.startMonth ?? defaultMonth
+  const strings = t().recurrenceDialog
 
-  const transactionGroup = new Adw.PreferencesGroup({ title: 'Transaction générée' })
+  const transactionGroup = new Adw.PreferencesGroup({ title: strings.transactionGroupTitle })
 
   const kindToggle = new Adw.ToggleGroup({ homogeneous: true })
-  kindToggle.add(new Adw.Toggle({ label: 'Dépense', name: 'expense' }))
-  kindToggle.add(new Adw.Toggle({ label: 'Revenu', name: 'income' }))
+  kindToggle.add(new Adw.Toggle({ label: t().common.expense, name: 'expense' }))
+  kindToggle.add(new Adw.Toggle({ label: t().common.income, name: 'income' }))
   kindToggle.setActiveName(recurrence?.kind ?? 'expense')
 
-  const kindRow = new Adw.ActionRow({ title: 'Type' })
+  const kindRow = new Adw.ActionRow({ title: strings.typeRow })
   kindRow.addSuffix(kindToggle)
   transactionGroup.add(kindRow)
 
   const descriptionRow = new Adw.EntryRow({
-    title: 'Description',
+    title: strings.descriptionLabel,
     text: recurrence?.description ?? '',
   })
   transactionGroup.add(descriptionRow)
 
   const amountRow = new Adw.SpinRow({
-    title: 'Montant (€)',
+    title: strings.amountLabel,
     digits: 2,
     adjustment: new Gtk.Adjustment({
       lower: 0,
@@ -105,18 +107,18 @@ function createForm(
   transactionGroup.add(category.row)
 
   const rhythmGroup = new Adw.PreferencesGroup({
-    title: 'Rythme',
-    description: 'La transaction est créée automatiquement à l’ouverture de chaque mois concerné.',
+    title: strings.rhythmGroupTitle,
+    description: strings.rhythmGroupDescription,
   })
 
   const frequencyRow = new Adw.ComboRow({
-    title: 'Fréquence',
+    title: t().common.frequency,
     model: Gtk.StringList.new(RECURRENCE_FREQUENCIES.map(formatFrequency)),
     selected: Math.max(0, RECURRENCE_FREQUENCIES.indexOf(recurrence?.frequency ?? 'monthly')),
   })
   rhythmGroup.add(frequencyRow)
 
-  const dayRow = createSpinRow('Jour du mois', 'Ramené au dernier jour des mois plus courts',
+  const dayRow = createSpinRow(strings.dayLabel, strings.daySubtitle,
     new Gtk.Adjustment({
       lower: FIRST_DAY,
       upper: LAST_DAY,
@@ -127,7 +129,7 @@ function createForm(
   rhythmGroup.add(dayRow)
 
   const startMonthRow = new Adw.ComboRow({
-    title: 'Mois de départ',
+    title: strings.startMonthLabel,
     model: Gtk.StringList.new(
       Array.from({ length: MONTHS_IN_YEAR }, (_unused, index) => formatMonthName(index + 1)),
     ),
@@ -135,7 +137,7 @@ function createForm(
   })
   rhythmGroup.add(startMonthRow)
 
-  const startYearRow = createSpinRow('Année de départ', 'Aucune occurrence avant ce mois',
+  const startYearRow = createSpinRow(strings.startYearLabel, strings.startYearSubtitle,
     new Gtk.Adjustment({
       lower: yearOf(FIRST_MONTH),
       upper: yearOf(LAST_MONTH),
@@ -186,8 +188,8 @@ export function openRecurrenceDialog(
   const form = createForm(availableCategories, recurrence, defaultMonth)
 
   openFormDialog(parent, {
-    title: isEditing ? 'Modifier la récurrence' : 'Nouvelle récurrence',
-    confirmLabel: isEditing ? 'Enregistrer' : 'Ajouter',
+    title: isEditing ? t().recurrenceDialog.editTitle : t().recurrenceDialog.newTitle,
+    confirmLabel: isEditing ? t().common.save : t().common.add,
     content: form.widget,
     width: DIALOG_WIDTH,
     height: DIALOG_HEIGHT,

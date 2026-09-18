@@ -19,6 +19,7 @@ import {
   type MonthKey,
 } from '../../domain/month.js'
 import { formatMonth, formatShortMonthName } from '../format.js'
+import { t } from '../../i18n/index.js'
 import type { GtkButton, GtkLabel } from '../gtk-types.js'
 import type { Component } from '../types.js'
 
@@ -86,14 +87,14 @@ export function createMonthSwitcher(actions: MonthSwitcherActions): Component<Mo
   }
   let pickerYear = yearOf(state.selected)
 
-  const olderButton = createArrowButton('go-previous-symbolic', 'Mois précédent', actions.onSelectOlder)
-  const newerButton = createArrowButton('go-next-symbolic', 'Mois suivant', actions.onSelectNewer)
+  const olderButton = createArrowButton('go-previous-symbolic', t().monthSwitcher.previousMonth, actions.onSelectOlder)
+  const newerButton = createArrowButton('go-next-symbolic', t().monthSwitcher.nextMonth, actions.onSelectNewer)
 
   const popover = new Gtk.Popover()
   const monthButton = new Gtk.MenuButton({
     popover,
     cssClasses: ['flat'],
-    tooltipText: 'Choisir un mois',
+    tooltipText: t().monthSwitcher.pickMonth,
   })
 
   const container = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 2 })
@@ -113,12 +114,12 @@ export function createMonthSwitcher(actions: MonthSwitcherActions): Component<Mo
 
   const previousYearButton = createArrowButton(
     'go-previous-symbolic',
-    'Année précédente',
+    t().monthSwitcher.previousYear,
     () => showYear(pickerYear - 1),
   )
   const nextYearButton = createArrowButton(
     'go-next-symbolic',
-    'Année suivante',
+    t().monthSwitcher.nextYear,
     () => showYear(pickerYear + 1),
   )
   const yearLabel = new Gtk.Label({ cssClasses: ['heading'], hexpand: true })
@@ -137,7 +138,7 @@ export function createMonthSwitcher(actions: MonthSwitcherActions): Component<Mo
     cells.push(cell)
   }
 
-  const todayButton = new Gtk.Button({ label: 'Aller au mois courant', cssClasses: ['flat'] })
+  const todayButton = new Gtk.Button({ label: t().monthSwitcher.goToCurrentMonth, cssClasses: ['flat'] })
   todayButton.on('clicked', () => pick(state.current))
 
   const pickerContent = new Gtk.Box({
@@ -169,7 +170,7 @@ export function createMonthSwitcher(actions: MonthSwitcherActions): Component<Mo
 
       cell.button.setCssClasses(styleClassesFor(isSelected, month === state.current))
       cell.button.setTooltipText(hasData
-        ? `${formatMonth(month)} — contient des transactions`
+        ? t().monthSwitcher.monthWithData(formatMonth(month))
         : formatMonth(month))
       cell.marker.setCssClasses(isSelected ? ['month-marker', 'month-marker-selected'] : ['month-marker'])
       cell.marker.setOpacity(hasData ? 1 : 0)

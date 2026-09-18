@@ -21,15 +21,13 @@ import {
   type TransactionFilter,
   type TransactionKind,
 } from '../../domain/transaction.js'
+import { t } from '../../i18n/index.js'
 import type { GtkCheckButton, GtkWidget } from '../gtk-types.js'
 import { clearBox, onNotify } from '../widgets.js'
 
-/** Kind entries, in order. `null` is "Tous" and is the resting choice. */
+/** Kind entries, in order. `null` is "all kinds" and is the resting choice. */
 const KINDS: readonly (TransactionKind | null)[] = [null, 'income', 'expense']
-const KIND_LABELS = ['Tous', 'Revenus', 'Dépenses']
-
-/** Label of the categories button while none is ticked. */
-const ANY_CATEGORY = 'Toutes'
+const kindLabels = () => [t().transactionFilters.kindAll, t().transactionFilters.kindIncome, t().transactionFilters.kindExpense]
 
 /** Past this, the category list scrolls inside the popover. */
 const CATEGORY_LIST_MAX_HEIGHT = 320
@@ -53,14 +51,14 @@ export function createTransactionFilters(
   onChange: (filter: TransactionFilter) => void,
 ): TransactionFilters {
   const search = new Gtk.SearchEntry({
-    placeholderText: 'Rechercher une description ou une catégorie…',
+    placeholderText: t().transactionFilters.searchPlaceholder,
     hexpand: true,
   })
 
   const kindDrop = new Gtk.DropDown({
-    model: Gtk.StringList.new([...KIND_LABELS]),
+    model: Gtk.StringList.new(kindLabels()),
     selected: 0,
-    tooltipText: 'N’afficher qu’un type de transaction',
+    tooltipText: t().transactionFilters.kindTooltip,
   })
 
   const checkList = new Gtk.Box({
@@ -85,8 +83,8 @@ export function createTransactionFilters(
   categoryPopover.setChild(checkScroller)
 
   const categoryButton = new Gtk.MenuButton({
-    label: ANY_CATEGORY,
-    tooltipText: 'N’afficher que certaines catégories',
+    label: t().transactionFilters.anyCategory,
+    tooltipText: t().transactionFilters.categoryTooltip,
     popover: categoryPopover,
   })
 
@@ -94,7 +92,7 @@ export function createTransactionFilters(
   // that the list on screen is the whole month.
   const reset = new Gtk.Button({
     iconName: 'edit-clear-symbolic',
-    tooltipText: 'Réinitialiser les filtres',
+    tooltipText: t().transactionFilters.resetTooltip,
     cssClasses: ['flat'],
     sensitive: false,
   })
@@ -116,9 +114,9 @@ export function createTransactionFilters(
   const ticked = () => checks.filter(({ check }) => check.active).map(({ name }) => name)
 
   const showChoice = (categories: readonly string[]) => {
-    if (categories.length === 0) categoryButton.setLabel(ANY_CATEGORY)
-    else if (categories.length === 1) categoryButton.setLabel(categories[0] ?? ANY_CATEGORY)
-    else categoryButton.setLabel(`${categories.length} catégories`)
+    if (categories.length === 0) categoryButton.setLabel(t().transactionFilters.anyCategory)
+    else if (categories.length === 1) categoryButton.setLabel(categories[0] ?? t().transactionFilters.anyCategory)
+    else categoryButton.setLabel(t().transactionFilters.categoriesCount(categories.length))
   }
 
   const changed = () => {

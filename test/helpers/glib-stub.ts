@@ -19,6 +19,14 @@ const GLib = {
   uuidStringRandom(): string {
     return randomUUID()
   },
+  /**
+   * Real GLib reads the desktop's locale environment; here it reads the same
+   * variables so `i18n/locale.ts` can be exercised without `BUDGET_APP_LOCALE`.
+   */
+  getLanguageNames(): string[] {
+    const raw = process.env.LANGUAGE ?? process.env.LC_ALL ?? process.env.LC_MESSAGES ?? process.env.LANG ?? 'C'
+    return [...new Set([raw.split(':')[0] ?? 'C', 'C'])]
+  },
 }
 
 export default GLib

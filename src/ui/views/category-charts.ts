@@ -10,6 +10,7 @@ import Gtk from 'gi:Gtk-4.0'
 import Pango from 'gi:Pango-1.0'
 
 import { sumByCategory, type CategoryTotal, type Transaction } from '../../domain/transaction.js'
+import { t } from '../../i18n/index.js'
 import { asCairoContext, type Rgb } from '../cairo.js'
 import { formatAmount, formatPercent } from '../format.js'
 import type { GtkBox } from '../gtk-types.js'
@@ -151,7 +152,7 @@ function createPieChart(title: string): Component<readonly Slice[]> {
       clearBox(legend)
 
       if (slices.length === 0) {
-        legend.append(new Gtk.Label({ label: 'Aucune donnée', cssClasses: ['dim-label'], xalign: 0 }))
+        legend.append(new Gtk.Label({ label: t().categoryCharts.noData, cssClasses: ['dim-label'], xalign: 0 }))
         return
       }
 
@@ -173,8 +174,8 @@ export function createCategoryCharts(): Component<readonly Transaction[]> {
     vexpand: true,
   })
 
-  const expenseChart = createPieChart('Dépenses par catégorie')
-  const incomeChart = createPieChart('Revenus par catégorie')
+  const expenseChart = createPieChart(t().categoryCharts.expenseTitle)
+  const incomeChart = createPieChart(t().categoryCharts.incomeTitle)
   container.append(expenseChart.widget)
   container.append(incomeChart.widget)
 

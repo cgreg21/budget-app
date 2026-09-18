@@ -20,6 +20,7 @@ import type { RecurrenceStore } from '../data/recurrence-store.js'
 import type { RemoteStorage } from '../data/remote/remote-storage.js'
 import type { ThresholdsStore } from '../data/thresholds-store.js'
 import { isWritable } from '../domain/remote.js'
+import { t } from '../i18n/index.js'
 import { openOptionsDialog } from '../ui/dialogs/options-dialog.js'
 import { openTransactionDialog } from '../ui/dialogs/transaction-dialog.js'
 import { formatMonth } from '../ui/format.js'
@@ -65,9 +66,9 @@ interface HeaderBarDeps {
 
 function createMainMenu(): GioMenu {
   const menu = new Gio.Menu()
-  menu.append('Options', 'app.options')
-  menu.append(`À propos de ${APP_NAME}`, 'app.about')
-  menu.append('Quitter', 'app.quit')
+  menu.append(t().mainWindow.optionsMenu, 'app.options')
+  menu.append(t().mainWindow.aboutMenu(APP_NAME), 'app.about')
+  menu.append(t().mainWindow.quitMenu, 'app.quit')
   return menu
 }
 
@@ -123,7 +124,7 @@ function createHeaderBar({
 
   const addButton = createIconButton({
     iconName: 'list-add-symbolic',
-    tooltip: 'Ajouter une transaction',
+    tooltip: t().mainWindow.addTransactionTooltip,
     onClick: () => {
       openTransactionDialog(parent, {
         categories: categoryStore.categories,
@@ -131,11 +132,11 @@ function createHeaderBar({
         onSubmit: ({ input, recurrence }) => guard(() => {
           if (recurrence === null) {
             budgetStore.add(input)
-            notify('Transaction ajoutée')
+            notify(t().mainWindow.added)
             return
           }
           budgetStore.addRecurring(input, recurrence)
-          notify('Transaction récurrente ajoutée')
+          notify(t().mainWindow.addedRecurring)
         }),
       })
     },
@@ -222,7 +223,7 @@ export function createMainWindow({
 
   // Says out loud why the budget suddenly refuses to be edited, and offers
   // the one action that can fix it.
-  const banner = new Adw.Banner({ buttonLabel: 'Réessayer' })
+  const banner = new Adw.Banner({ buttonLabel: t().mainWindow.retryButton })
   banner.on('button-clicked', () => {
     void remoteStorage.connect()
   })
@@ -230,8 +231,8 @@ export function createMainWindow({
     const { status } = remoteStorage
     banner.setRevealed(!isWritable(status))
     banner.setTitle(status.state === 'connecting'
-      ? 'Connexion au serveur…'
-      : 'Serveur inaccessible — budget en lecture seule')
+      ? t().remoteStatus.connecting
+      : t().mainWindow.serverUnreachable)
   }
   showBanner()
   const unsubscribeBanner = remoteStorage.onStatusChange(showBanner)

@@ -10,6 +10,7 @@ import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
 import { MAX_OCCURRENCES, MIN_OCCURRENCES } from '../../domain/recurrence.js'
+import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 import { onNotify } from '../widgets.js'
 
@@ -25,14 +26,15 @@ export interface OccurrenceCountField {
 }
 
 export function createOccurrenceCountField(occurrences: number | undefined): OccurrenceCountField {
+  const strings = t().occurrenceCountField
   const limitRow = new Adw.SwitchRow({
-    title: 'Durée limitée',
-    subtitle: 'Sinon la série se répète sans fin',
+    title: strings.limitedTitle,
+    subtitle: strings.limitedSubtitle,
     active: occurrences !== undefined,
   })
 
   const countRow = new Adw.SpinRow({
-    title: 'Nombre d’occurrences',
+    title: strings.countTitle,
     sensitive: occurrences !== undefined,
     adjustment: new Gtk.Adjustment({
       lower: MIN_OCCURRENCES,

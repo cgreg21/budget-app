@@ -10,6 +10,7 @@ import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
 import { DEFAULT_CATEGORY_ICON, FALLBACK_CATEGORY, type Category } from '../../domain/category.js'
+import { t } from '../../i18n/index.js'
 import type {
   AdwComboRow,
   GtkImage,
@@ -60,7 +61,7 @@ export function createCategoryCombo(
   const names = categories.map((category) => category.name)
 
   const row = new Adw.ComboRow({
-    title: 'Catégorie',
+    title: t().categoryCombo.title,
     model: Gtk.StringList.new(names),
     // Unknown or absent category (new transaction) falls back to the first one.
     selected: Math.max(0, names.indexOf(selectedName ?? '')),

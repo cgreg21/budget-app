@@ -18,11 +18,12 @@ import Adw from 'gi:Adw-1'
 
 import type { RemoteStorage } from '../../data/remote/remote-storage.js'
 import {
-  describeStatus,
   normalizeRemoteConfig,
   type RemoteConfig,
   type RemoteState,
 } from '../../domain/remote.js'
+import { t } from '../../i18n/index.js'
+import { describeRemoteStatus } from '../format.js'
 import type { AdwPreferencesGroup } from '../gtk-types.js'
 import type { Notify } from '../types.js'
 
@@ -40,21 +41,21 @@ export interface CloudGroups {
 const ADDRESS_HINT = 'https://cloud.exemple.org/remote.php/dav/files/alice'
 
 export function createCloudGroups({ storage, notify }: CloudGroupOptions): CloudGroups {
+  const strings = t().cloudGroup
+
   const serverGroup = new Adw.PreferencesGroup({
-    title: 'Serveur WebDAV',
-    description: 'Le budget est lu et écrit sur le serveur ; les fichiers locaux n’en sont '
-      + 'qu’un cache. Sans réseau, le budget reste consultable mais ne peut plus être modifié. '
-      + 'Compatible Nextcloud, ownCloud et tout serveur WebDAV.',
+    title: strings.serverGroupTitle,
+    description: strings.serverGroupDescription,
   })
 
-  const addressRow = new Adw.EntryRow({ title: 'Adresse du serveur' })
-  addressRow.setTooltipText(`Par exemple ${ADDRESS_HINT}`)
-  const usernameRow = new Adw.EntryRow({ title: 'Utilisateur' })
-  const passwordRow = new Adw.PasswordEntryRow({ title: 'Mot de passe' })
-  const directoryRow = new Adw.EntryRow({ title: 'Dossier distant' })
+  const addressRow = new Adw.EntryRow({ title: strings.addressLabel })
+  addressRow.setTooltipText(strings.addressTooltip(ADDRESS_HINT))
+  const usernameRow = new Adw.EntryRow({ title: strings.usernameLabel })
+  const passwordRow = new Adw.PasswordEntryRow({ title: strings.passwordLabel })
+  const directoryRow = new Adw.EntryRow({ title: strings.directoryLabel })
   const enabledRow = new Adw.SwitchRow({
-    title: 'Utiliser le serveur',
-    subtitle: 'Désactivé, le budget reste sur cette machine',
+    title: strings.useServerLabel,
+    subtitle: strings.useServerSubtitle,
   })
 
   serverGroup.add(addressRow)
@@ -63,18 +64,18 @@ export function createCloudGroups({ storage, notify }: CloudGroupOptions): Cloud
   serverGroup.add(directoryRow)
   serverGroup.add(enabledRow)
 
-  const statusGroup = new Adw.PreferencesGroup({ title: 'État' })
-  const statusRow = new Adw.ActionRow({ title: 'Stockage local' })
+  const statusGroup = new Adw.PreferencesGroup({ title: strings.statusGroupTitle })
+  const statusRow = new Adw.ActionRow({ title: t().remoteStatus.localStorage })
   const statusIcon = new Gtk.Image({ valign: Gtk.Align.CENTER })
   statusRow.addPrefix(statusIcon)
 
-  const syncButton = new Gtk.Button({ label: 'Synchroniser', valign: Gtk.Align.CENTER })
+  const syncButton = new Gtk.Button({ label: strings.syncButton, valign: Gtk.Align.CENTER })
   statusRow.addSuffix(syncButton)
   statusGroup.add(statusRow)
 
   const passwordRow2 = new Adw.ActionRow({
-    title: 'Mot de passe',
-    subtitle: 'Conservé dans le trousseau du système, jamais dans les fichiers du budget',
+    title: strings.passwordLabel,
+    subtitle: strings.passwordKeptSubtitle,
   })
   passwordRow2.addPrefix(new Gtk.Image({ iconName: 'dialog-password-symbolic', valign: Gtk.Align.CENTER }))
   statusGroup.add(passwordRow2)
@@ -98,10 +99,10 @@ export function createCloudGroups({ storage, notify }: CloudGroupOptions): Cloud
 
   const showStatus = () => {
     const { state } = storage.status
-    statusRow.setTitle(describeStatus(storage.status))
+    statusRow.setTitle(describeRemoteStatus(storage.status))
     statusIcon.setFromIconName(STATUS_ICONS[state])
     syncButton.setSensitive(state !== 'connecting')
-    syncButton.setLabel(state === 'disabled' ? 'Connecter' : 'Synchroniser')
+    syncButton.setLabel(state === 'disabled' ? strings.connectButton : strings.syncButton)
   }
 
   /** Saves the form, stores the password, then tries the server. */
@@ -110,7 +111,7 @@ export function createCloudGroups({ storage, notify }: CloudGroupOptions): Cloud
     const password = passwordRow.text
 
     if (config.enabled && config.baseUrl === '') {
-      notify('Renseignez l’adresse du serveur et l’utilisateur')
+      notify(strings.missingAddress)
       return
     }
 
@@ -119,16 +120,16 @@ export function createCloudGroups({ storage, notify }: CloudGroupOptions): Cloud
         const stored = await storage.savePassword(config, password)
         passwordRow.text = '' // never keep it on screen
         if (!stored) {
-          notify('Trousseau indisponible — définissez BUDGET_APP_REMOTE_PASSWORD')
+          notify(strings.keyringUnavailable)
         }
       } else if (config.enabled && !(await storage.hasPassword(config))) {
-        notify('Aucun mot de passe enregistré pour ce compte')
+        notify(strings.noPasswordSaved)
       }
 
       storage.saveConfig(config)
       showConfig()
       await storage.connect()
-      notify(describeStatus(storage.status))
+      notify(describeRemoteStatus(storage.status))
     })()
   }
 
@@ -137,21 +138,21 @@ export function createCloudGroups({ storage, notify }: CloudGroupOptions): Cloud
     storage.disconnect()
     void storage.forgetPassword(config)
     showConfig()
-    notify('Serveur déconnecté — le budget reste sur cette machine')
+    notify(strings.disconnected)
   }
 
-  const applyButton = new Gtk.Button({ label: 'Connecter', cssClasses: ['suggested-action'] })
+  const applyButton = new Gtk.Button({ label: strings.connectButton, cssClasses: ['suggested-action'] })
   applyButton.on('clicked', connect)
   serverGroup.setHeaderSuffix(applyButton)
 
-  const forgetButton = new Gtk.Button({ label: 'Oublier', valign: Gtk.Align.CENTER })
+  const forgetButton = new Gtk.Button({ label: strings.forgetButton, valign: Gtk.Align.CENTER })
   forgetButton.on('clicked', disconnect)
   statusGroup.setHeaderSuffix(forgetButton)
 
   syncButton.on('clicked', () => {
     void (async () => {
       await storage.connect()
-      notify(describeStatus(storage.status))
+      notify(describeRemoteStatus(storage.status))
     })()
   })
 

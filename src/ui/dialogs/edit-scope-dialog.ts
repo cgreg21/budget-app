@@ -8,6 +8,7 @@
  */
 import Adw from 'gi:Adw-1'
 
+import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 
 const CANCEL = 'cancel'
@@ -26,16 +27,15 @@ export function openEditScopeDialog(
   { canApplyToOccurrence, onOccurrence, onSeries }: EditScopeDialogOptions,
 ): void {
   const dialog = new Adw.AlertDialog({
-    heading: 'Transaction récurrente',
+    heading: t().editScopeDialog.heading,
     body: canApplyToOccurrence
-      ? 'Appliquer la modification à cette occurrence seulement, ou à toute la série ?'
-      : 'La fréquence ne peut être modifiée que pour toute la série : '
-        + 'les mois à venir suivront le nouveau rythme.',
+      ? t().editScopeDialog.bodyOccurrence
+      : t().editScopeDialog.bodySeriesOnly,
   })
 
-  dialog.addResponse(CANCEL, 'Annuler')
-  dialog.addResponse(OCCURRENCE, 'Cette occurrence')
-  dialog.addResponse(SERIES, 'Toute la série')
+  dialog.addResponse(CANCEL, t().common.cancel)
+  dialog.addResponse(OCCURRENCE, t().editScopeDialog.occurrenceOption)
+  dialog.addResponse(SERIES, t().editScopeDialog.seriesOption)
   dialog.setResponseEnabled(OCCURRENCE, canApplyToOccurrence)
   dialog.setResponseAppearance(SERIES, Adw.ResponseAppearance.SUGGESTED)
   dialog.setDefaultResponse(canApplyToOccurrence ? OCCURRENCE : SERIES)

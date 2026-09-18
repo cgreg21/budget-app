@@ -6,10 +6,10 @@ import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
 import {
-  APP_DESCRIPTION,
   APP_ID,
   APP_NAME,
   APP_VERSION,
+  appDescription,
   COPYRIGHT,
   DEVELOPERS,
   DEVELOPER_NAME,
@@ -23,7 +23,7 @@ export function openAboutDialog(parent: GtkWindow): void {
     applicationIcon: APP_ID,
     developerName: DEVELOPER_NAME,
     version: APP_VERSION,
-    comments: APP_DESCRIPTION,
+    comments: appDescription(),
     developers: [...DEVELOPERS],
     copyright: COPYRIGHT,
     licenseType: Gtk.License.MIT_X11,

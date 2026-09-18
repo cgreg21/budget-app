@@ -9,6 +9,7 @@ import Gtk from 'gi:Gtk-4.0'
 
 import { balanceLevel, type BalanceThresholds } from '../../domain/balance.js'
 import type { Totals } from '../../domain/transaction.js'
+import { t } from '../../i18n/index.js'
 import { formatAmount } from '../format.js'
 import type { GtkWidget } from '../gtk-types.js'
 import type { Component } from '../types.js'
@@ -58,9 +59,9 @@ export function createSummaryCards(): Component<SummaryState> {
     homogeneous: true,
   })
 
-  const balance = createCard('Solde', 'budget-balance')
-  const income = createCard('Revenus', 'budget-income-card')
-  const expense = createCard('Dépenses', 'budget-expense-card')
+  const balance = createCard(t().summaryCards.balance, 'budget-balance')
+  const income = createCard(t().summaryCards.income, 'budget-income-card')
+  const expense = createCard(t().summaryCards.expenses, 'budget-expense-card')
 
   container.append(balance.widget)
   container.append(income.widget)

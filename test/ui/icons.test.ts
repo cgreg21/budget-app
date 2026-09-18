@@ -12,10 +12,10 @@ describe('CATEGORY_ICON_CHOICES', () => {
     expect(new Set(names).size).toBe(names.length)
   })
 
-  it('gives every choice a non-empty name and label', () => {
+  it('gives every choice a non-empty name and translation key', () => {
     for (const choice of CATEGORY_ICON_CHOICES) {
       expect(choice.name).not.toBe('')
-      expect(choice.label).not.toBe('')
+      expect(choice.key).not.toBe('')
     }
   })
 

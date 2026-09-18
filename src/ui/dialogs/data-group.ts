@@ -25,13 +25,14 @@ import {
 } from '../../data/backup-service.js'
 import { countBackup, type BackupCounts, type ImportMode } from '../../domain/backup.js'
 import { todayIsoDate } from '../../domain/transaction.js'
+import { t } from '../../i18n/index.js'
 import type { AdwPreferencesGroup, GtkWidget } from '../gtk-types.js'
 import type { Notify } from '../types.js'
 import { chooseFileToOpen, chooseFileToSave } from './file-dialogs.js'
 import { openImportModeDialog } from './import-mode-dialog.js'
 
-const BACKUP_FILTER = { filterName: 'Sauvegarde Budget', patterns: ['*.json'] }
-const CSV_FILTER = { filterName: 'Fichier CSV', patterns: ['*.csv'] }
+const BACKUP_PATTERNS = ['*.json']
+const CSV_PATTERNS = ['*.csv']
 
 export interface DataGroupOptions {
   stores: BackupStores
@@ -41,29 +42,33 @@ export interface DataGroupOptions {
 }
 
 export function createDataGroups({ stores, parent, notify }: DataGroupOptions): AdwPreferencesGroup[] {
+  const strings = t().dataGroup
+
   /** Every service call may fail on the file itself; the message is for the user. */
   const run = (action: () => void) => {
     try {
       action()
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'Opération impossible')
+      notify(error instanceof Error ? error.message : strings.operationFailed)
     }
   }
 
   const exportArchive = () => {
     chooseFileToSave(parent, {
-      title: 'Exporter une sauvegarde',
+      title: strings.exportBackupTitle,
       initialName: `budget-${todayIsoDate()}.json`,
-      ...BACKUP_FILTER,
+      filterName: strings.backupFilterName,
+      patterns: BACKUP_PATTERNS,
     }, (filePath) => run(() => {
-      notify(`Sauvegarde exportée — ${describe(exportBackup(filePath, stores))}`)
+      notify(strings.backupExported(describe(exportBackup(filePath, stores))))
     }))
   }
 
   const importArchive = () => {
     chooseFileToOpen(parent, {
-      title: 'Importer une sauvegarde',
-      ...BACKUP_FILTER,
+      title: strings.importBackupTitle,
+      filterName: strings.backupFilterName,
+      patterns: BACKUP_PATTERNS,
     }, (filePath) => run(() => {
       // Read first: the file is described in the dialog that asks how to apply it.
       const data = readBackupFile(filePath)
@@ -78,60 +83,60 @@ export function createDataGroups({ stores, parent, notify }: DataGroupOptions): 
 
   const exportCsv = () => {
     chooseFileToSave(parent, {
-      title: 'Exporter les transactions',
+      title: strings.exportCsvTitle,
       initialName: `budget-transactions-${todayIsoDate()}.csv`,
-      ...CSV_FILTER,
+      filterName: strings.csvFilterName,
+      patterns: CSV_PATTERNS,
     }, (filePath) => run(() => {
       const rows = exportTransactionsCsv(filePath, stores)
-      notify(rows === 0 ? 'Aucune transaction à exporter' : agreed(rows, 'transaction', 'exportée'))
+      notify(rows === 0 ? strings.noTransactionsToExport : strings.transactionsExportedCount(rows))
     }))
   }
 
   const importCsv = () => {
     chooseFileToOpen(parent, {
-      title: 'Importer des transactions',
-      ...CSV_FILTER,
+      title: strings.importCsvTitle,
+      filterName: strings.csvFilterName,
+      patterns: CSV_PATTERNS,
     }, (filePath) => run(() => {
       notify(describeCsvImport(importTransactionsCsv(filePath, stores)))
     }))
   }
 
   const backupGroup = new Adw.PreferencesGroup({
-    title: 'Sauvegarde complète',
-    description: 'Un fichier JSON contenant les catégories, les seuils, '
-      + 'les récurrences et tous les mois de l’historique.',
+    title: strings.backupGroupTitle,
+    description: strings.backupGroupDescription,
   })
   backupGroup.add(createActionRow({
-    title: 'Exporter une sauvegarde',
-    subtitle: 'Enregistrer l’état actuel dans un fichier',
-    buttonLabel: 'Exporter…',
+    title: strings.exportBackupTitle,
+    subtitle: strings.exportBackupSubtitle,
+    buttonLabel: strings.exportButton,
     iconName: 'document-save-symbolic',
     onClick: exportArchive,
   }))
   backupGroup.add(createActionRow({
-    title: 'Importer une sauvegarde',
-    subtitle: 'Restaurer un fichier, en remplaçant ou en fusionnant',
-    buttonLabel: 'Importer…',
+    title: strings.importBackupTitle,
+    subtitle: strings.importBackupSubtitle,
+    buttonLabel: strings.importButton,
     iconName: 'document-open-symbolic',
     onClick: importArchive,
   }))
 
   const csvGroup = new Adw.PreferencesGroup({
-    title: 'Tableur (CSV)',
-    description: 'Colonnes date, description, catégorie, type et montant, '
-      + 'séparées par des points-virgules — lisibles dans Excel ou LibreOffice.',
+    title: strings.csvGroupTitle,
+    description: strings.csvGroupDescription,
   })
   csvGroup.add(createActionRow({
-    title: 'Exporter les transactions',
-    subtitle: 'Tous les mois, du plus ancien au plus récent',
-    buttonLabel: 'Exporter…',
+    title: strings.exportCsvTitle,
+    subtitle: strings.exportCsvSubtitle,
+    buttonLabel: strings.exportButton,
     iconName: 'x-office-spreadsheet-symbolic',
     onClick: exportCsv,
   }))
   csvGroup.add(createActionRow({
-    title: 'Importer des transactions',
-    subtitle: 'Chaque ligne rejoint le mois de sa date et s’ajoute aux transactions existantes',
-    buttonLabel: 'Importer…',
+    title: strings.importCsvTitle,
+    subtitle: strings.importCsvSubtitle,
+    buttonLabel: strings.importButton,
     iconName: 'x-office-spreadsheet-symbolic',
     onClick: importCsv,
   }))
@@ -160,43 +165,36 @@ function createActionRow({ title, subtitle, buttonLabel, iconName, onClick }: Ac
 }
 
 function describe({ months, transactions, categories, recurrences }: BackupCounts): string {
+  const strings = t().dataGroup
   const parts = [
-    `${months} mois`,
-    plural(transactions, 'transaction'),
-    plural(categories, 'catégorie'),
+    strings.monthsCount(months),
+    strings.transactionsCount(transactions),
+    strings.categoriesCount(categories),
   ]
-  if (recurrences > 0) parts.push(plural(recurrences, 'récurrence'))
+  if (recurrences > 0) parts.push(strings.recurrencesCount(recurrences))
   return parts.join(', ')
 }
 
 function describeImport(mode: ImportMode, counts: BackupCounts): string {
-  if (mode === 'replace') return `Sauvegarde restaurée — ${describe(counts)}`
+  const strings = t().dataGroup
+  if (mode === 'replace') return strings.restored(describe(counts))
 
   const { transactions, categories, recurrences } = counts
   if (transactions === 0 && categories === 0 && recurrences === 0) {
-    return 'Rien à ajouter : ces données sont déjà présentes'
+    return strings.nothingToAdd
   }
 
   const parts: string[] = []
-  if (transactions > 0) parts.push(plural(transactions, 'transaction'))
-  if (categories > 0) parts.push(plural(categories, 'catégorie'))
-  if (recurrences > 0) parts.push(plural(recurrences, 'récurrence'))
-  return `Fusion terminée — ajout de ${parts.join(', ')}`
+  if (transactions > 0) parts.push(strings.transactionsCount(transactions))
+  if (categories > 0) parts.push(strings.categoriesCount(categories))
+  if (recurrences > 0) parts.push(strings.recurrencesCount(recurrences))
+  return strings.mergeCompleted(parts.join(', '))
 }
 
 function describeCsvImport({ imported, ignored, months, categories }: CsvImportReport): string {
-  let message = `${agreed(imported, 'transaction', 'importée')} dans ${months} mois`
-  if (categories > 0) message += `, ${agreed(categories, 'catégorie', 'créée')}`
-  if (ignored > 0) message += ` — ${agreed(ignored, 'ligne', 'ignorée')}`
+  const strings = t().dataGroup
+  let message = strings.csvImportSummary(strings.transactionsImportedCount(imported), strings.monthsCount(months))
+  if (categories > 0) message += `, ${strings.categoriesCreatedCount(categories)}`
+  if (ignored > 0) message += ` — ${strings.linesIgnoredCount(ignored)}`
   return message
-}
-
-/** French plural: "mois" is already invariable, every other noun takes an "s". */
-function plural(count: number, noun: string): string {
-  return `${count} ${count > 1 ? `${noun}s` : noun}`
-}
-
-/** Same, with a past participle that has to agree: "3 lignes ignorées". */
-function agreed(count: number, noun: string, participle: string): string {
-  return `${plural(count, noun)} ${participle}${count > 1 ? 's' : ''}`
 }

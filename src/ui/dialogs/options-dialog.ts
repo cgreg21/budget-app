@@ -16,6 +16,7 @@ import type { RecurrenceStore } from '../../data/recurrence-store.js'
 import type { RemoteStorage } from '../../data/remote/remote-storage.js'
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
 import type { MonthKey } from '../../domain/month.js'
+import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 import type { Notify } from '../types.js'
 import { RECURRING_ICON } from '../widgets.js'
@@ -50,7 +51,7 @@ export function openOptionsDialog(
   }: OptionsDialogOptions,
 ): void {
   const dialog = new Adw.PreferencesDialog({
-    title: 'Options',
+    title: t().optionsDialog.title,
     contentWidth: DIALOG_WIDTH,
     contentHeight: DIALOG_HEIGHT,
   })
@@ -59,7 +60,7 @@ export function openOptionsDialog(
 
   const thresholds = createThresholdsGroup({ store: thresholdsStore, notify })
   const thresholdsPage = new Adw.PreferencesPage({
-    title: 'Seuils',
+    title: t().optionsDialog.thresholdsTab,
     iconName: 'preferences-color-symbolic',
   })
   thresholdsPage.add(thresholds.group)
@@ -72,20 +73,20 @@ export function openOptionsDialog(
     notify,
   })
   const recurrencesPage = new Adw.PreferencesPage({
-    title: 'Récurrences',
+    title: t().optionsDialog.recurrencesTab,
     iconName: RECURRING_ICON,
   })
   recurrencesPage.add(recurrences.group)
 
   const categories = createCategoriesGroups({ store: categoryStore, parent: dialog, notify })
   const categoriesPage = new Adw.PreferencesPage({
-    title: 'Catégories',
+    title: t().optionsDialog.categoriesTab,
     iconName: 'view-list-symbolic',
   })
   for (const group of categories.groups) categoriesPage.add(group)
 
   const dataPage = new Adw.PreferencesPage({
-    title: 'Données',
+    title: t().optionsDialog.dataTab,
     iconName: 'drive-harddisk-symbolic',
   })
   const dataGroups = createDataGroups({
@@ -97,7 +98,7 @@ export function openOptionsDialog(
 
   const cloud = createCloudGroups({ storage: remoteStorage, notify })
   const cloudPage = new Adw.PreferencesPage({
-    title: 'Cloud',
+    title: t().optionsDialog.cloudTab,
     iconName: 'network-server-symbolic',
   })
   for (const group of cloud.groups) cloudPage.add(group)

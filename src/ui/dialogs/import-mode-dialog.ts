@@ -9,6 +9,7 @@
 import Adw from 'gi:Adw-1'
 
 import type { ImportMode } from '../../domain/backup.js'
+import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 
 const CANCEL = 'cancel'
@@ -26,16 +27,13 @@ export function openImportModeDialog(
   { summary, onChoose }: ImportModeDialogOptions,
 ): void {
   const dialog = new Adw.AlertDialog({
-    heading: 'Importer la sauvegarde',
-    body: `Cette sauvegarde contient ${summary}.\n\n`
-      + 'Fusionner ajoute seulement ce qui manque et conserve les données actuelles. '
-      + 'Remplacer efface les données actuelles — mois, catégories, seuils et récurrences — '
-      + 'au profit de celles du fichier.',
+    heading: t().importModeDialog.heading,
+    body: t().importModeDialog.body(summary),
   })
 
-  dialog.addResponse(CANCEL, 'Annuler')
-  dialog.addResponse(MERGE, 'Fusionner')
-  dialog.addResponse(REPLACE, 'Remplacer')
+  dialog.addResponse(CANCEL, t().common.cancel)
+  dialog.addResponse(MERGE, t().importModeDialog.mergeOption)
+  dialog.addResponse(REPLACE, t().importModeDialog.replaceOption)
   dialog.setResponseAppearance(MERGE, Adw.ResponseAppearance.SUGGESTED)
   dialog.setResponseAppearance(REPLACE, Adw.ResponseAppearance.DESTRUCTIVE)
   dialog.setDefaultResponse(MERGE)

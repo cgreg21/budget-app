@@ -11,6 +11,7 @@ import type { CategoryStore } from '../../data/category-store.js'
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
 import type { RecurrenceSettings } from '../../domain/recurrence.js'
 import type { TransactionInput } from '../../domain/transaction.js'
+import { t } from '../../i18n/index.js'
 import { openConfirmDeleteDialog } from '../dialogs/confirm-delete-dialog.js'
 import { openEditScopeDialog } from '../dialogs/edit-scope-dialog.js'
 import { openTransactionDialog } from '../dialogs/transaction-dialog.js'
@@ -49,11 +50,11 @@ export function createBudgetView({
   const applyEdit = (id: string, input: TransactionInput, settings: RecurrenceSettings | null) => guard(() => {
     if (settings === null) {
       budgetStore.update(id, input)
-      notify('Transaction modifiée')
+      notify(t().budgetView.edited)
       return
     }
     budgetStore.updateSeries(id, input, settings)
-    notify('Transaction modifiée et rendue récurrente')
+    notify(t().budgetView.editedRecurring)
   })
 
   const list = createTransactionList({
@@ -76,13 +77,13 @@ export function createBudgetView({
             canApplyToOccurrence: !recurrenceChanged,
             onOccurrence: () => guard(() => {
               budgetStore.update(transaction.id, input)
-              notify('Occurrence modifiée — la récurrence est inchangée')
+              notify(t().budgetView.occurrenceEdited)
             }),
             onSeries: () => guard(() => {
               budgetStore.updateSeries(transaction.id, input, settings)
               notify(settings === null
-                ? 'Récurrence supprimée — la transaction devient ponctuelle'
-                : 'Récurrence mise à jour')
+                ? t().budgetView.recurrenceRemoved
+                : t().budgetView.recurrenceUpdated)
             }),
           })
         },
@@ -97,17 +98,15 @@ export function createBudgetView({
       ].join(' · ')
 
       openConfirmDeleteDialog(parent, {
-        name: transaction.description || '(sans description)',
+        name: transaction.description || t().common.noDescription,
         body: isOccurrence
-          ? `${details}\n\nCette transaction vient d’une récurrence : elle réapparaîtra `
-            + 'à la prochaine ouverture du mois. Pour qu’elle cesse d’être créée, '
-            + 'supprimez plutôt la récurrence dans les options.'
-          : `${details}\n\nElle sera retirée du mois définitivement.`,
+          ? t().budgetView.deleteBodyOccurrence(details)
+          : t().budgetView.deleteBodyOnce(details),
         onConfirm: () => guard(() => {
           budgetStore.remove(transaction.id)
           notify(isOccurrence
-            ? 'Occurrence supprimée — elle réapparaîtra à la prochaine ouverture du mois'
-            : 'Transaction supprimée')
+            ? t().budgetView.occurrenceDeleted
+            : t().budgetView.deleted)
         }),
       })
     },

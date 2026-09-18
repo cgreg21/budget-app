@@ -14,6 +14,7 @@
  */
 import Adw from 'gi:Adw-1'
 
+import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 
 const CANCEL = 'cancel'
@@ -32,12 +33,12 @@ export function openConfirmDeleteDialog(
   { name, body, onConfirm }: ConfirmDeleteDialogOptions,
 ): void {
   const dialog = new Adw.AlertDialog({
-    heading: `Supprimer « ${name} » ?`,
+    heading: t().confirmDeleteDialog.heading(name),
     body,
   })
 
-  dialog.addResponse(CANCEL, 'Annuler')
-  dialog.addResponse(DELETE, 'Supprimer')
+  dialog.addResponse(CANCEL, t().common.cancel)
+  dialog.addResponse(DELETE, t().common.delete)
   dialog.setResponseAppearance(DELETE, Adw.ResponseAppearance.DESTRUCTIVE)
   // Cancelling is both the default and the answer to Escape: a stray Enter on
   // a dialog that was not even read must never delete anything.

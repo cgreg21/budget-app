@@ -15,6 +15,7 @@ import Gtk from 'gi:Gtk-4.0'
 
 import { computeTotals, type Transaction } from '../../domain/transaction.js'
 import { formatAmount } from '../format.js'
+import { t } from '../../i18n/index.js'
 import type { Component } from '../types.js'
 
 export interface ListTotalState {
@@ -24,16 +25,9 @@ export interface ListTotalState {
   monthCount: number
 }
 
-function countLabel(shown: number, monthCount: number): string {
-  const plural = shown > 1 ? 's' : ''
-  return shown === monthCount
-    ? `${shown} transaction${plural}`
-    : `${shown} transaction${plural} sur ${monthCount}`
-}
-
 export function createListTotal(): Component<ListTotalState> {
   const count = new Gtk.Label({ cssClasses: ['dim-label'], xalign: 0, hexpand: true })
-  const caption = new Gtk.Label({ label: 'Total', cssClasses: ['dim-label'] })
+  const caption = new Gtk.Label({ label: t().listTotal.total, cssClasses: ['dim-label'] })
   const amount = new Gtk.Label({ cssClasses: ['budget-amount'] })
 
   const box = new Gtk.Box({
@@ -51,7 +45,7 @@ export function createListTotal(): Component<ListTotalState> {
     widget: box,
     update: ({ shown, monthCount }) => {
       const { balance } = computeTotals(shown)
-      count.setLabel(countLabel(shown.length, monthCount))
+      count.setLabel(t().listTotal.countLabel(shown.length, monthCount))
       amount.setLabel(formatAmount(balance))
       // Left plain at zero: neither green nor red says anything there.
       amount.setCssClasses(balance === 0

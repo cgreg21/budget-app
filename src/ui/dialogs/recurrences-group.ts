@@ -13,6 +13,7 @@ import type { CategoryStore } from '../../data/category-store.js'
 import type { RecurrenceStore } from '../../data/recurrence-store.js'
 import type { MonthKey } from '../../domain/month.js'
 import type { Recurrence } from '../../domain/recurrence.js'
+import { t } from '../../i18n/index.js'
 import {
   formatFrequency,
   formatRecurrencePeriod,
@@ -44,7 +45,7 @@ export interface RecurrencesGroup {
 function describe(recurrence: Recurrence): string {
   return [
     formatFrequency(recurrence.frequency),
-    `le ${recurrence.day}`,
+    t().recurrencesGroup.dayPrefix(recurrence.day),
     formatRecurrencePeriod(recurrence),
     recurrence.category,
   ].join(' · ')
@@ -57,10 +58,10 @@ export function createRecurrencesGroup({
   defaultMonth,
   notify,
 }: RecurrencesGroupOptions): RecurrencesGroup {
+  const strings = t().recurrencesGroup
   const group = new Adw.PreferencesGroup({
-    title: 'Transactions récurrentes',
-    description: 'Chaque récurrence est ajoutée automatiquement aux mois concernés, '
-      + 'dès leur ouverture.',
+    title: strings.groupTitle,
+    description: strings.groupDescription,
   })
 
   let rows: GtkWidget[] = []
@@ -73,7 +74,7 @@ export function createRecurrencesGroup({
       recurrence,
       onSubmit: (input) => guard(() => {
         store.update(recurrence.id, input)
-        notify('Récurrence modifiée')
+        notify(strings.updated)
       }),
     })
   }
@@ -94,20 +95,19 @@ export function createRecurrencesGroup({
 
     row.addSuffix(createRowActionButton({
       iconName: 'document-edit-symbolic',
-      tooltip: 'Modifier cette récurrence',
+      tooltip: strings.editTooltip,
       onClick: () => edit(recurrence),
     }))
 
     row.addSuffix(createRowActionButton({
       iconName: 'user-trash-symbolic',
-      tooltip: 'Supprimer cette récurrence',
+      tooltip: strings.deleteTooltip,
       onClick: () => openConfirmDeleteDialog(parent, {
-        name: recurrence.description || '(sans description)',
-        body: 'Les transactions déjà ajoutées aux mois ouverts sont conservées : '
-          + 'seules les prochaines ne seront plus créées.',
+        name: recurrence.description || t().common.noDescription,
+        body: strings.deleteBody,
         onConfirm: () => guard(() => {
           store.remove(recurrence.id)
-          notify('Récurrence supprimée — les transactions déjà créées sont conservées')
+          notify(strings.deleted)
         }),
       }),
     }))
@@ -116,8 +116,8 @@ export function createRecurrencesGroup({
   }
 
   const createEmptyRow = () => new Adw.ActionRow({
-    title: 'Aucune récurrence',
-    subtitle: 'Loyer, salaire, abonnement… ajoutez-en une avec le bouton +',
+    title: strings.emptyTitle,
+    subtitle: strings.emptySubtitle,
   })
 
   const renderList = () => {
@@ -128,14 +128,14 @@ export function createRecurrencesGroup({
 
   group.setHeaderSuffix(createRowActionButton({
     iconName: 'list-add-symbolic',
-    tooltip: 'Ajouter une récurrence',
+    tooltip: strings.addTooltip,
     onClick: () => {
       openRecurrenceDialog(parent, {
         categories: categoryStore.categories,
         defaultMonth,
         onSubmit: (input) => guard(() => {
           store.add(input)
-          notify('Récurrence ajoutée')
+          notify(strings.added)
         }),
       })
     },

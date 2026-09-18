@@ -10,6 +10,7 @@ import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
 import type { GtkWidget } from '../gtk-types.js'
+import { t } from '../../i18n/index.js'
 import { CATEGORY_ICON_CHOICES } from '../icons.js'
 
 const DIALOG_WIDTH = 400
@@ -27,7 +28,7 @@ export function openIconPickerDialog(
   { selected, onSelect }: IconPickerOptions,
 ): void {
   const dialog = new Adw.Dialog({
-    title: 'Choisir une icône',
+    title: t().iconPickerDialog.title,
     contentWidth: DIALOG_WIDTH,
     contentHeight: DIALOG_HEIGHT,
   })
@@ -45,10 +46,10 @@ export function openIconPickerDialog(
     marginEnd: 12,
   })
 
-  for (const { name, label } of CATEGORY_ICON_CHOICES) {
+  for (const { name, key } of CATEGORY_ICON_CHOICES) {
     const button = new Gtk.Button({
       iconName: name,
-      tooltipText: label,
+      tooltipText: t().icons[key],
       cssClasses: name === selected ? ['circular', 'suggested-action'] : ['flat', 'circular'],
     })
     button.on('clicked', () => {
@@ -65,7 +66,7 @@ export function openIconPickerDialog(
   scrolled.setChild(grid)
 
   const header = new Adw.HeaderBar({ showStartTitleButtons: false, showEndTitleButtons: false })
-  const cancelButton = new Gtk.Button({ label: 'Annuler' })
+  const cancelButton = new Gtk.Button({ label: t().common.cancel })
   cancelButton.on('clicked', () => dialog.close())
   header.packStart(cancelButton)
 

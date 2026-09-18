@@ -2,59 +2,62 @@
  * ui/icons.ts — the icon palette offered by the category icon picker.
  *
  * Every name here was checked against the Adwaita icon theme shipped with the
- * app; the French label is the tooltip shown under the cursor. Keep the list
- * short and budget-minded: a wall of icons is harder to choose from.
+ * app; the label is the tooltip shown under the cursor, translated through
+ * `i18n/strings.ts`. Keep the list short and budget-minded: a wall of icons
+ * is harder to choose from.
  */
+import { t, type IconKey } from '../i18n/index.js'
 
 export interface IconChoice {
   name: string
-  label: string
+  key: IconKey
 }
 
 export const CATEGORY_ICON_CHOICES: readonly IconChoice[] = [
-  { name: 'emoji-food-symbolic', label: 'Alimentation' },
-  { name: 'user-home-symbolic', label: 'Logement' },
-  { name: 'thunderbolt-symbolic', label: 'Énergie' },
-  { name: 'weather-showers-symbolic', label: 'Eau' },
-  { name: 'night-light-symbolic', label: 'Chauffage' },
-  { name: 'applications-engineering-symbolic', label: 'Bricolage' },
-  { name: 'emoji-travel-symbolic', label: 'Transport' },
-  { name: 'airplane-mode-symbolic', label: 'Voyage' },
-  { name: 'find-location-symbolic', label: 'Déplacements' },
-  { name: 'emoji-activities-symbolic', label: 'Loisirs' },
-  { name: 'applications-games-symbolic', label: 'Jeux' },
-  { name: 'folder-music-symbolic', label: 'Musique' },
-  { name: 'audio-headphones-symbolic', label: 'Audio' },
-  { name: 'camera-photo-symbolic', label: 'Photo' },
-  { name: 'tv-symbolic', label: 'Télévision' },
-  { name: 'media-optical-symbolic', label: 'Médias' },
-  { name: 'emote-love-symbolic', label: 'Santé' },
-  { name: 'emoji-body-symbolic', label: 'Sport' },
-  { name: 'security-high-symbolic', label: 'Assurance' },
-  { name: 'value-increase-symbolic', label: 'Revenus' },
-  { name: 'value-decrease-symbolic', label: 'Charges' },
-  { name: 'accessories-calculator-symbolic', label: 'Comptes' },
-  { name: 'package-x-generic-symbolic', label: 'Achats' },
-  { name: 'x-office-spreadsheet-symbolic', label: 'Tableur' },
-  { name: 'x-office-document-symbolic', label: 'Administratif' },
-  { name: 'mail-send-symbolic', label: 'Courrier' },
-  { name: 'x-office-calendar-symbolic', label: 'Agenda' },
-  { name: 'web-browser-symbolic', label: 'Abonnements' },
-  { name: 'network-wireless-symbolic', label: 'Internet' },
-  { name: 'phone-symbolic', label: 'Téléphone' },
-  { name: 'computer-symbolic', label: 'Informatique' },
-  { name: 'accessories-dictionary-symbolic', label: 'Éducation' },
-  { name: 'user-bookmarks-symbolic', label: 'Livres' },
-  { name: 'system-users-symbolic', label: 'Famille' },
-  { name: 'avatar-default-symbolic', label: 'Personnel' },
-  { name: 'emoji-nature-symbolic', label: 'Nature' },
-  { name: 'weather-clear-symbolic', label: 'Vacances' },
-  { name: 'starred-symbolic', label: 'Favori' },
-  { name: 'emblem-important-symbolic', label: 'Important' },
-  { name: 'folder-symbolic', label: 'Autres' },
+  { name: 'emoji-food-symbolic', key: 'food' },
+  { name: 'user-home-symbolic', key: 'housing' },
+  { name: 'thunderbolt-symbolic', key: 'energy' },
+  { name: 'weather-showers-symbolic', key: 'water' },
+  { name: 'night-light-symbolic', key: 'heating' },
+  { name: 'applications-engineering-symbolic', key: 'diy' },
+  { name: 'emoji-travel-symbolic', key: 'transport' },
+  { name: 'airplane-mode-symbolic', key: 'travel' },
+  { name: 'find-location-symbolic', key: 'commute' },
+  { name: 'emoji-activities-symbolic', key: 'leisure' },
+  { name: 'applications-games-symbolic', key: 'games' },
+  { name: 'folder-music-symbolic', key: 'music' },
+  { name: 'audio-headphones-symbolic', key: 'audio' },
+  { name: 'camera-photo-symbolic', key: 'photo' },
+  { name: 'tv-symbolic', key: 'tv' },
+  { name: 'media-optical-symbolic', key: 'media' },
+  { name: 'emote-love-symbolic', key: 'health' },
+  { name: 'emoji-body-symbolic', key: 'sport' },
+  { name: 'security-high-symbolic', key: 'insurance' },
+  { name: 'value-increase-symbolic', key: 'income' },
+  { name: 'value-decrease-symbolic', key: 'expenses' },
+  { name: 'accessories-calculator-symbolic', key: 'accounts' },
+  { name: 'package-x-generic-symbolic', key: 'shopping' },
+  { name: 'x-office-spreadsheet-symbolic', key: 'spreadsheet' },
+  { name: 'x-office-document-symbolic', key: 'admin' },
+  { name: 'mail-send-symbolic', key: 'mail' },
+  { name: 'x-office-calendar-symbolic', key: 'calendar' },
+  { name: 'web-browser-symbolic', key: 'subscriptions' },
+  { name: 'network-wireless-symbolic', key: 'internet' },
+  { name: 'phone-symbolic', key: 'phone' },
+  { name: 'computer-symbolic', key: 'computer' },
+  { name: 'accessories-dictionary-symbolic', key: 'education' },
+  { name: 'user-bookmarks-symbolic', key: 'books' },
+  { name: 'system-users-symbolic', key: 'family' },
+  { name: 'avatar-default-symbolic', key: 'personal' },
+  { name: 'emoji-nature-symbolic', key: 'nature' },
+  { name: 'weather-clear-symbolic', key: 'holidays' },
+  { name: 'starred-symbolic', key: 'favorite' },
+  { name: 'emblem-important-symbolic', key: 'important' },
+  { name: 'folder-symbolic', key: 'other' },
 ]
 
 /** The tooltip of an icon, falling back to its name for unknown ones. */
 export function iconLabel(name: string): string {
-  return CATEGORY_ICON_CHOICES.find((choice) => choice.name === name)?.label ?? name
+  const choice = CATEGORY_ICON_CHOICES.find((candidate) => candidate.name === name)
+  return choice ? t().icons[choice.key] : name
 }

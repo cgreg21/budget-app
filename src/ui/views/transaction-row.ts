@@ -15,6 +15,7 @@ import Adw from 'gi:Adw-1'
 
 import type { Recurrence } from '../../domain/recurrence.js'
 import type { Transaction } from '../../domain/transaction.js'
+import { t } from '../../i18n/index.js'
 import {
   formatDate,
   formatFrequency,
@@ -35,11 +36,12 @@ export interface TransactionRowDeps {
 }
 
 function createDetails(recurrence: Recurrence, transaction: Transaction): GtkWidget {
+  const strings = t().transactionRow
   const entries: readonly (readonly [string, string])[] = [
-    ['Fréquence', formatFrequency(recurrence.frequency)],
-    ['Jour', `le ${recurrence.day} du mois`],
-    ['Période', formatRecurrencePeriod(recurrence)],
-    ['Cette occurrence', formatDate(transaction.date)],
+    [t().common.frequency, formatFrequency(recurrence.frequency)],
+    [strings.dayLabel, strings.dayValue(recurrence.day)],
+    [strings.periodLabel, formatRecurrencePeriod(recurrence)],
+    [strings.occurrenceLabel, formatDate(transaction.date)],
   ]
 
   const grid = new Gtk.Grid({ columnSpacing: 12, rowSpacing: 4 })
@@ -50,7 +52,7 @@ function createDetails(recurrence: Recurrence, transaction: Transaction): GtkWid
 
   const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8 })
   box.append(new Gtk.Label({
-    label: recurrence.description || 'Transaction récurrente',
+    label: recurrence.description || strings.defaultDescription,
     cssClasses: ['heading'],
     xalign: 0,
   }))
@@ -131,7 +133,7 @@ export function createTransactionRow(
   const iconClass = isIncome ? 'budget-icon-income' : 'budget-icon-expense'
 
   const row = new Adw.ActionRow({
-    title: transaction.description || '(sans description)',
+    title: transaction.description || t().common.noDescription,
     subtitle: `${transaction.category}`,
     activatable: true,
   })
@@ -162,13 +164,13 @@ export function createTransactionRow(
 
   row.addSuffix(createRowActionButton({
     iconName: 'document-edit-symbolic',
-    tooltip: 'Modifier cette transaction',
+    tooltip: t().transactionRow.editTooltip,
     onClick: () => deps.onEdit(transaction),
   }))
 
   row.addSuffix(createRowActionButton({
     iconName: 'user-trash-symbolic',
-    tooltip: 'Supprimer cette transaction',
+    tooltip: t().transactionRow.deleteTooltip,
     onClick: () => deps.onDelete(transaction),
   }))
 

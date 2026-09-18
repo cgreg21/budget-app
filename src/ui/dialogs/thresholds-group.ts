@@ -11,6 +11,7 @@ import Adw from 'gi:Adw-1'
 
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
 import { areThresholdsOrdered, type BalanceThresholds } from '../../domain/balance.js'
+import { t } from '../../i18n/index.js'
 import type { AdwPreferencesGroup, AdwSpinRow } from '../gtk-types.js'
 import type { Notify } from '../types.js'
 import { createWriteGuard } from '../write-guard.js'
@@ -48,16 +49,16 @@ function createAmountRow(title: string, subtitle: string): AdwSpinRow {
 }
 
 export function createThresholdsGroup({ store, notify }: ThresholdsGroupOptions): ThresholdsGroup {
+  const strings = t().thresholdsGroup
   const group = new Adw.PreferencesGroup({
-    title: 'Seuils du solde',
+    title: strings.groupTitle,
     // Descriptions and toast titles go through Pango markup: "<" must be escaped.
-    description: 'Couleur de fond du solde : rouge en dessous de x, orange de x à y, '
-      + `jaune de y à z, vert à partir de z. Les seuils doivent respecter ${ORDER_RULE}.`,
+    description: strings.groupDescription(ORDER_RULE),
   })
 
-  const lowRow = createAmountRow('Seuil rouge', '')
-  const mediumRow = createAmountRow('Seuil orange', '')
-  const highRow = createAmountRow('Seuil jaune', '')
+  const lowRow = createAmountRow(strings.lowLabel, '')
+  const mediumRow = createAmountRow(strings.mediumLabel, '')
+  const highRow = createAmountRow(strings.highLabel, '')
 
   const showStoredValues = () => {
     const { low, medium, high } = store.thresholds
@@ -74,17 +75,17 @@ export function createThresholdsGroup({ store, notify }: ThresholdsGroupOptions)
     }
 
     if (!areThresholdsOrdered(next)) {
-      notify(`Les seuils doivent respecter ${ORDER_RULE}`)
+      notify(strings.orderError(ORDER_RULE))
       return
     }
 
     createWriteGuard(notify)(() => {
       store.save(next)
-      notify('Seuils enregistrés')
+      notify(strings.saved)
     })
   }
 
-  const saveButton = new Gtk.Button({ label: 'Enregistrer', cssClasses: ['suggested-action'] })
+  const saveButton = new Gtk.Button({ label: strings.saveButton, cssClasses: ['suggested-action'] })
   saveButton.on('clicked', save)
   group.setHeaderSuffix(saveButton)
 

@@ -182,27 +182,4 @@ export function remoteUrl(baseUrl: string, remotePath: string): string {
   return encoded === '' ? base : `${base}/${encoded}`
 }
 
-/** A one-line account of where the budget stands, shown in the options dialog. */
-export function describeStatus(status: RemoteStatus): string {
-  switch (status.state) {
-    case 'disabled':
-      return 'Stockage local — aucun serveur configuré'
-    case 'connecting':
-      return 'Connexion au serveur…'
-    case 'online':
-      return status.lastSyncedAt
-        ? `Connecté — dernière synchronisation à ${formatTime(status.lastSyncedAt)}`
-        : 'Connecté'
-    case 'offline':
-      return 'Hors ligne — budget en lecture seule'
-    case 'error':
-      return status.message ?? 'Erreur de connexion'
-  }
-}
 
-function formatTime(isoDate: string): string {
-  const date = new Date(isoDate)
-  return Number.isNaN(date.getTime())
-    ? isoDate
-    : new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(date)
-}

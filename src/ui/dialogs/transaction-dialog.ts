@@ -28,6 +28,7 @@ import type {
   TransactionInput,
   TransactionKind,
 } from '../../domain/transaction.js'
+import { t } from '../../i18n/index.js'
 import { formatFrequency } from '../format.js'
 import type { GtkWidget } from '../gtk-types.js'
 import { onNotify } from '../widgets.js'
@@ -39,9 +40,9 @@ const DIALOG_WIDTH = 420
 const DIALOG_HEIGHT = 660
 const MAX_AMOUNT = 1_000_000
 
-/** "Ponctuelle" first, then the recurring rhythms. */
+/** The one-off option first, then the recurring rhythms. */
 const REPEAT_OPTIONS: readonly (RecurrenceFrequency | null)[] = [null, ...RECURRENCE_FREQUENCIES]
-const REPEAT_LABELS = ['Ponctuelle', ...RECURRENCE_FREQUENCIES.map(formatFrequency)]
+const repeatLabels = () => [t().transactionDialog.onceLabel, ...RECURRENCE_FREQUENCIES.map(formatFrequency)]
 
 export interface TransactionSubmission {
   input: TransactionInput
@@ -69,7 +70,7 @@ interface TransactionForm {
 }
 
 function defaultDescription(kind: TransactionKind): string {
-  return kind === 'income' ? 'Revenu' : 'Dépense'
+  return t().transactionDialog.defaultDescription(kind)
 }
 
 function createForm(
@@ -79,24 +80,25 @@ function createForm(
   recurrence: Recurrence | undefined,
 ): TransactionForm {
   const group = new Adw.PreferencesGroup()
+  const strings = t().transactionDialog
 
   const kindToggle = new Adw.ToggleGroup({ homogeneous: true })
-  kindToggle.add(new Adw.Toggle({ label: 'Dépense', name: 'expense' }))
-  kindToggle.add(new Adw.Toggle({ label: 'Revenu', name: 'income' }))
+  kindToggle.add(new Adw.Toggle({ label: t().common.expense, name: 'expense' }))
+  kindToggle.add(new Adw.Toggle({ label: t().common.income, name: 'income' }))
   kindToggle.setActiveName(transaction?.kind ?? 'expense')
 
-  const kindRow = new Adw.ActionRow({ title: 'Type' })
+  const kindRow = new Adw.ActionRow({ title: strings.typeRow })
   kindRow.addSuffix(kindToggle)
   group.add(kindRow)
 
   const descriptionRow = new Adw.EntryRow({
-    title: 'Description',
+    title: t().recurrenceDialog.descriptionLabel,
     text: transaction?.description ?? '',
   })
   group.add(descriptionRow)
 
   const amountRow = new Adw.SpinRow({
-    title: 'Montant (€)',
+    title: strings.amountLabel,
     digits: 2,
     adjustment: new Gtk.Adjustment({
       lower: 0,
@@ -113,13 +115,12 @@ function createForm(
 
   const initialRepeat = Math.max(0, REPEAT_OPTIONS.indexOf(recurrence?.frequency ?? null))
   const repeatGroup = new Adw.PreferencesGroup({
-    title: 'Répétition',
-    description: 'Une transaction répétée est recréée automatiquement, le même jour, '
-      + 'dans chaque mois concerné, dès son ouverture.',
+    title: strings.repeatGroupTitle,
+    description: strings.repeatGroupDescription,
   })
   const repeatRow = new Adw.ComboRow({
-    title: 'Fréquence',
-    model: Gtk.StringList.new(REPEAT_LABELS),
+    title: t().common.frequency,
+    model: Gtk.StringList.new(repeatLabels()),
     selected: initialRepeat,
   })
   repeatGroup.add(repeatRow)
@@ -179,8 +180,8 @@ export function openTransactionDialog(
   const form = createForm(availableCategories, transaction, defaultDate, recurrence)
 
   openFormDialog(parent, {
-    title: isEditing ? 'Modifier la transaction' : 'Nouvelle transaction',
-    confirmLabel: isEditing ? 'Enregistrer' : 'Ajouter',
+    title: isEditing ? t().transactionDialog.editTitle : t().transactionDialog.newTitle,
+    confirmLabel: isEditing ? t().common.save : t().common.add,
     content: form.widget,
     width: DIALOG_WIDTH,
     height: DIALOG_HEIGHT,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Recurrence } from '../../src/domain/recurrence.js'
 import {
+  describeRemoteStatus,
   formatAmount,
   formatDate,
   formatFrequency,
@@ -123,5 +124,89 @@ describe('formatRecurrencePeriod', () => {
   it('reduces a single occurrence to its own month', () => {
     expect(formatRecurrencePeriod({ ...series, occurrences: 1 }))
       .toBe('Septembre 2026 → Septembre 2026 (1 fois)')
+  })
+})
+
+describe('describeRemoteStatus', () => {
+  it('names the local case', () => {
+    expect(describeRemoteStatus({ state: 'disabled' })).toBe('Stockage local — aucun serveur configuré')
+  })
+
+  it('names the transient case', () => {
+    expect(describeRemoteStatus({ state: 'connecting' })).toBe('Connexion au serveur…')
+  })
+
+  it('reports the read-only case', () => {
+    expect(describeRemoteStatus({ state: 'offline' })).toBe('Hors ligne — budget en lecture seule')
+  })
+
+  it('repeats the server message when there is one', () => {
+    expect(describeRemoteStatus({ state: 'error', message: 'identifiants refusés' }))
+      .toBe('identifiants refusés')
+  })
+
+  it('falls back to a generic message when the error has none', () => {
+    expect(describeRemoteStatus({ state: 'error' })).toBe('Erreur de connexion')
+  })
+
+  it('mentions the last synchronisation when one happened', () => {
+    const described = describeRemoteStatus({
+      state: 'online',
+      lastSyncedAt: '2026-09-18T08:30:00.000Z',
+    })
+    expect(described).toMatch(/^Connecté — dernière synchronisation à \d{2}:\d{2}$/)
+  })
+
+  it('stays terse before the first synchronisation', () => {
+    expect(describeRemoteStatus({ state: 'online' })).toBe('Connecté')
+  })
+
+  it('shows an unparsable timestamp as it came', () => {
+    expect(describeRemoteStatus({ state: 'online', lastSyncedAt: 'plus tard' }))
+      .toBe('Connecté — dernière synchronisation à plus tard')
+  })
+})
+
+describe('in English (BUDGET_APP_LOCALE=en)', () => {
+  const withEnglish = (run: () => void) => {
+    const previous = process.env.BUDGET_APP_LOCALE
+    process.env.BUDGET_APP_LOCALE = 'en'
+    try {
+      run()
+    } finally {
+      if (previous === undefined) delete process.env.BUDGET_APP_LOCALE
+      else process.env.BUDGET_APP_LOCALE = previous
+    }
+  }
+
+  it('formats amounts, dates and month names in English while keeping euros', () => {
+    withEnglish(() => {
+      expect(normalize(formatAmount(1200))).toBe('€1,200.00')
+      expect(formatDate('2026-09-17')).toBe('09/17/2026')
+      expect(formatMonth('2026-09')).toBe('September 2026')
+      expect(formatFrequency('monthly')).toBe('Monthly')
+    })
+  })
+
+  it('translates the recurrence period', () => {
+    withEnglish(() => {
+      const series: Recurrence = {
+        id: 'r1',
+        description: 'Rent',
+        category: 'Housing',
+        kind: 'expense',
+        amount: 800,
+        day: 5,
+        frequency: 'monthly',
+        startMonth: '2026-09',
+      }
+      expect(formatRecurrencePeriod(series)).toBe('starting September 2026')
+    })
+  })
+
+  it('translates the remote status', () => {
+    withEnglish(() => {
+      expect(describeRemoteStatus({ state: 'disabled' })).toBe('Local storage — no server configured')
+    })
   })
 })

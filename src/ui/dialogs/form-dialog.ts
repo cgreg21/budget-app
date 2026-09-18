@@ -9,6 +9,7 @@
 import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
+import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 
 const DEFAULT_WIDTH = 420
@@ -32,7 +33,7 @@ export function openFormDialog(
 
   const header = new Adw.HeaderBar({ showStartTitleButtons: false, showEndTitleButtons: false })
 
-  const cancelButton = new Gtk.Button({ label: 'Annuler' })
+  const cancelButton = new Gtk.Button({ label: t().common.cancel })
   cancelButton.on('clicked', () => dialog.close())
   header.packStart(cancelButton)
 

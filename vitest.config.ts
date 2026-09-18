@@ -18,6 +18,11 @@ export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
     environment: 'node',
+    // Deterministic language for the whole suite; individual tests override
+    // it to exercise the other locale (see test/ui/format.test.ts).
+    env: {
+      BUDGET_APP_LOCALE: 'fr',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
@@ -34,6 +39,9 @@ export default defineConfig({
         // Type-only modules: no runtime code to cover.
         'src/ui/gtk-types.ts',
         'src/ui/types.ts',
+        // Translation tables: every entry is data, not logic. `i18n/locale.ts`
+        // (the one piece of actual behaviour) is covered in full instead.
+        'src/i18n/strings.ts',
       ],
       // Statements, lines and functions are covered in full. The ten branches
       // left out are unreachable defensive fallbacks: `row[0] ?? ''` and
