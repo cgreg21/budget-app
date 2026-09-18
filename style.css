@@ -1,0 +1,61 @@
+/*
+ * Custom styles for Budget App.
+ *
+ * Loaded by src/main.ts (via node-gtk/styles), layered on top of the Adwaita
+ * stylesheet. Under `npm run dev` it hot-reloads — edit and save to see changes
+ * live, with no restart. See the GTK4 CSS reference:
+ *   https://docs.gtk.org/gtk4/css-overview.html
+ *   https://docs.gtk.org/gtk4/css-properties.html
+ *
+ * Adwaita ships many ready-made style classes (`.pill`, `.suggested-action`,
+ * `.title-1`, `.dim-label`, …) — prefer those before writing custom CSS:
+ *   https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html
+ */
+
+.budget-card {
+  padding: 12px 16px;
+}
+
+.budget-amount {
+  font-weight: bold;
+  font-family: monospace;
+}
+
+.budget-income {
+  color: #26a269;
+}
+
+.budget-expense {
+  color: #c01c28;
+}
+
+/* Balance card background, by band — see domain/balance.ts. */
+.budget-card.budget-balance-critical {
+  background-color: alpha(#e01b24, 0.28);
+}
+
+.budget-card.budget-balance-low {
+  background-color: alpha(#ff7800, 0.28);
+}
+
+.budget-card.budget-balance-medium {
+  background-color: alpha(#f6d32d, 0.32);
+}
+
+.budget-card.budget-balance-high {
+  background-color: alpha(#2ec27e, 0.28);
+}
+
+/* Dot flagging the months that already hold transactions in the month picker. */
+.month-marker {
+  font-size: 9px;
+  color: #3584e4;
+}
+
+.month-marker-selected {
+  color: #ffffff;
+}
+
+.month-current {
+  font-weight: bold;
+}
