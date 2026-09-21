@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
-$NodeVersion = '22.14.0'
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$NodeVersion = (Get-Content (Join-Path $Root '.nvmrc')).Trim()
 $Build = Join-Path $Root 'build\windows'
 $App = Join-Path $Build 'Budget-App'
 $NodeZip = Join-Path $Build 'node.zip'
@@ -32,6 +32,12 @@ Copy-Item (Join-Path $Root 'package-lock.json') (Join-Path $App 'app')
 Copy-Item (Join-Path $Root 'assets\icons\com.arkdev.BudgetApp.svg') (Join-Path $App 'Budget-App.svg')
 
 & (Join-Path $Build 'node\npm.cmd') prune --omit=dev --prefix (Join-Path $App 'app')
+
+$NodeAbi = & (Join-Path $Build 'node\node.exe') -e "process.stdout.write(process.versions.modules)"
+$GtkBinding = Join-Path $App "app\node_modules\node-gtk\lib\binding\node-v$NodeAbi-win32-x64\node_gtk.node"
+if (-not (Test-Path $GtkBinding)) {
+  throw "node-gtk native binding for Node ABI $NodeAbi not found at $GtkBinding. The bundled node.exe (v$NodeVersion) does not match the compiled node-gtk module; check that node_modules was installed with this same Node version."
+}
 
 @'
 @echo off
