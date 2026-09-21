@@ -65,6 +65,7 @@ export interface TransactionDialogOptions {
 
 interface TransactionForm {
   widget: GtkWidget
+  initialFocus: GtkWidget
   /** The filled-in submission, or `null` when the form is not valid yet. */
   read(): TransactionSubmission | null
 }
@@ -140,6 +141,7 @@ function createForm(
 
   return {
     widget: page,
+    initialFocus: descriptionRow,
     read: () => {
       const amount = amountRow.value
       if (amount <= 0) return null
@@ -183,6 +185,7 @@ export function openTransactionDialog(
     title: isEditing ? t().transactionDialog.editTitle : t().transactionDialog.newTitle,
     confirmLabel: isEditing ? t().common.save : t().common.add,
     content: form.widget,
+    initialFocus: form.initialFocus,
     width: DIALOG_WIDTH,
     height: DIALOG_HEIGHT,
     onConfirm: () => {

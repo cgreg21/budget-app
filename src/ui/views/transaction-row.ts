@@ -23,6 +23,7 @@ import {
   formatSignedAmount,
 } from '../format.js'
 import type { AdwActionRow, GtkWidget } from '../gtk-types.js'
+import { setCategoryIcon } from '../icons.js'
 import { createRowActionButton, onNotify } from '../widgets.js'
 
 /** Long enough that sweeping the list does not flash a popover on every row. */
@@ -149,12 +150,13 @@ export function createTransactionRow(
 
   // The category icon is the row's only prefix. Being symbolic, it is painted
   // white on the coloured disc the stylesheet gives it.
-  row.addPrefix(new Gtk.Image({
-    iconName: icon,
+  const categoryImage = new Gtk.Image({
     tooltipText: transaction.category,
     cssClasses: ['budget-icon', iconClass],
     valign: Gtk.Align.CENTER,
-  }))
+  })
+  setCategoryIcon(categoryImage, icon)
+  row.addPrefix(categoryImage)
 
   row.addSuffix(new Gtk.Label({
     label: formatSignedAmount(transaction.kind, transaction.amount),

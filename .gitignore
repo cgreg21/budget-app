@@ -3,6 +3,7 @@
 node_modules/
 # build output
 dist/
+build/*
 
 # test coverage reports
 coverage/
@@ -10,3 +11,5 @@ coverage/
 # misc
 *.log
 .DS_Store
+*.AppImage
+build/appimage

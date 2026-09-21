@@ -17,6 +17,7 @@ import { styles } from 'node-gtk/styles'
 import { BudgetStore } from '../data/budget-store.js'
 import { CategoryStore } from '../data/category-store.js'
 import { RecurrenceStore } from '../data/recurrence-store.js'
+import { GeneralSettingsStore } from '../data/general-settings-store.js'
 import { setRemoteGateway } from '../data/remote/gateway.js'
 import { RemoteConfigStore } from '../data/remote/remote-config-store.js'
 import { RemoteStorage } from '../data/remote/remote-storage.js'
@@ -25,6 +26,9 @@ import { openAboutDialog } from '../ui/dialogs/about-dialog.js'
 import type { AdwApplication, AdwApplicationWindow } from '../ui/gtk-types.js'
 import { APP_ID } from './app-info.js'
 import { createMainWindow } from './main-window.js'
+import { setLocale } from '../i18n/index.js'
+import { configureDisplaySettings } from '../ui/format.js'
+import { applyTheme } from '../ui/theme.js'
 
 export interface ApplicationOptions {
   /** Custom stylesheet layered on top of Adwaita; hot-reloaded by `npm run dev`. */
@@ -70,6 +74,10 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
     setRemoteGateway(remoteStorage)
 
     const recurrenceStore = new RecurrenceStore()
+    const generalSettingsStore = new GeneralSettingsStore()
+    setLocale(generalSettingsStore.settings.language)
+    configureDisplaySettings(generalSettingsStore.settings)
+    applyTheme(generalSettingsStore.settings.theme)
     // The budget store replays the recurrences into every month it opens.
     const budgetStore = new BudgetStore(recurrenceStore)
     const categoryStore = new CategoryStore()
@@ -80,6 +88,7 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
       categoryStore,
       thresholdsStore,
       recurrenceStore,
+      generalSettingsStore,
       remoteStorage,
     })
 
@@ -92,6 +101,7 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
       categoryStore.dispose()
       thresholdsStore.dispose()
       recurrenceStore.dispose()
+      generalSettingsStore.dispose()
       setRemoteGateway(null)
       remoteStorage.dispose()
       remoteConfigStore.dispose()

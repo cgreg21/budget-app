@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Budget App
+Comment=Personal budget management
+Exec=budget-app
+Icon=com.arkdev.BudgetApp
+Terminal=false
+Type=Application
+Categories=Office;Finance;GTK;
+StartupNotify=true

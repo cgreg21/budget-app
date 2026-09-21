@@ -2,10 +2,10 @@
  * app/main-window.ts — the application window: header bar on top, toast
  * overlay wrapping the budget view underneath.
  *
- * The header bar carries the month navigator as its title, so browsing the
- * history — or any month ahead — is always one click away. Every month can be
- * edited: the "add" button files the new transaction into the month currently
- * on screen. Everything else — options, about, quit — lives in the main menu.
+ * The header switches between the budget and history pages, opens the main
+ * menu, and carries the "add" button; the month navigator lives inside the
+ * budget page itself (see ui/views/budget-view.ts), since it makes no sense
+ * on the history page.
  *
  * Adw.ApplicationWindow has no built-in title bar, so the header is stacked
  * above the content inside a vertical box.
@@ -13,9 +13,11 @@
 import Gtk from 'gi:Gtk-4.0'
 import Gio from 'gi:Gio-2.0'
 import Adw from 'gi:Adw-1'
+import Gdk from 'gi:Gdk-4.0'
 
 import type { BudgetStore } from '../data/budget-store.js'
 import type { CategoryStore } from '../data/category-store.js'
+import type { GeneralSettingsStore } from '../data/general-settings-store.js'
 import type { RecurrenceStore } from '../data/recurrence-store.js'
 import type { RemoteStorage } from '../data/remote/remote-storage.js'
 import type { ThresholdsStore } from '../data/thresholds-store.js'
@@ -32,7 +34,7 @@ import type {
 } from '../ui/gtk-types.js'
 import type { DisposableComponent, Notify } from '../ui/types.js'
 import { createBudgetView } from '../ui/views/budget-view.js'
-import { createMonthSwitcher } from '../ui/views/month-switcher.js'
+import { createHistoryView } from '../ui/views/history-view.js'
 import { createIconButton } from '../ui/widgets.js'
 import { createWriteGuard } from '../ui/write-guard.js'
 import { APP_NAME } from './app-info.js'
@@ -47,6 +49,7 @@ export interface MainWindowDeps {
   categoryStore: CategoryStore
   thresholdsStore: ThresholdsStore
   recurrenceStore: RecurrenceStore
+  generalSettingsStore: GeneralSettingsStore
   remoteStorage: RemoteStorage
 }
 
@@ -62,6 +65,9 @@ interface HeaderBarDeps {
   categoryStore: CategoryStore
   remoteStorage: RemoteStorage
   notify: Notify
+  onShowBudget(): void
+  onShowHistory(): void
+  isBudgetPage(): boolean
 }
 
 function createMainMenu(): GioMenu {
@@ -79,6 +85,7 @@ interface OptionsActionDeps {
   categoryStore: CategoryStore
   thresholdsStore: ThresholdsStore
   recurrenceStore: RecurrenceStore
+  generalSettingsStore: GeneralSettingsStore
   remoteStorage: RemoteStorage
 }
 
@@ -90,6 +97,7 @@ function registerOptionsAction({
   categoryStore,
   thresholdsStore,
   recurrenceStore,
+  generalSettingsStore,
   remoteStorage,
 }: OptionsActionDeps): void {
   const action = Gio.SimpleAction.new('options', null)
@@ -98,6 +106,7 @@ function registerOptionsAction({
     categoryStore,
     thresholdsStore,
     recurrenceStore,
+    generalSettingsStore,
     remoteStorage,
     // Read on activation: a new recurrence starts from the month on screen.
     selectedMonth: budgetStore.selectedMonth,
@@ -111,59 +120,85 @@ function createHeaderBar({
   categoryStore,
   remoteStorage,
   notify,
+  onShowBudget,
+  onShowHistory,
+  isBudgetPage,
 }: HeaderBarDeps): DisposableComponent {
   const header = new Adw.HeaderBar()
   const guard = createWriteGuard(notify)
 
-  const monthSwitcher = createMonthSwitcher({
-    onSelectOlder: () => budgetStore.selectOlderMonth(),
-    onSelectNewer: () => budgetStore.selectNewerMonth(),
-    onSelect: (month) => budgetStore.selectMonth(month),
-  })
-  header.setTitleWidget(monthSwitcher.widget)
+  const addTransaction = () => {
+    if (!isWritable(remoteStorage.status)) return
+    openTransactionDialog(parent, {
+      categories: categoryStore.categories,
+      defaultDate: budgetStore.defaultTransactionDate,
+      onSubmit: ({ input, recurrence }) => guard(() => {
+        if (recurrence === null) {
+          budgetStore.add(input)
+          notify(t().mainWindow.added)
+          return
+        }
+        budgetStore.addRecurring(input, recurrence)
+        notify(t().mainWindow.addedRecurring)
+      }),
+    })
+  }
 
-  const addButton = createIconButton({
+  const addButton = new Gtk.Button({
     iconName: 'list-add-symbolic',
-    tooltip: t().mainWindow.addTransactionTooltip,
+    label: t().common.add,
+    tooltipText: t().mainWindow.addTransactionTooltip,
+    cssClasses: ['add-transaction-button'],
+  })
+  addButton.on('clicked', addTransaction)
+
+  const keyController = new Gtk.EventControllerKey({
+    propagationPhase: Gtk.PropagationPhase.CAPTURE,
+  })
+  keyController.on('key-pressed', (keyval) => {
+    if (keyval !== Gdk.KEY_Tab || !isBudgetPage()) return false
+    addTransaction()
+    return true
+  })
+  header.addController(keyController)
+
+  const budgetButton = createIconButton({
+    iconName: 'view-grid-symbolic',
+    tooltip: t().mainWindow.budgetMenu,
     onClick: () => {
-      openTransactionDialog(parent, {
-        categories: categoryStore.categories,
-        defaultDate: budgetStore.defaultTransactionDate,
-        onSubmit: ({ input, recurrence }) => guard(() => {
-          if (recurrence === null) {
-            budgetStore.add(input)
-            notify(t().mainWindow.added)
-            return
-          }
-          budgetStore.addRecurring(input, recurrence)
-          notify(t().mainWindow.addedRecurring)
-        }),
-      })
+      addButton.setVisible(true)
+      budgetButton.setCssClasses(['page-switcher', 'page-button-active'])
+      historyButton.setCssClasses(['page-switcher'])
+      onShowBudget()
     },
   })
-  header.packStart(addButton)
-
+  const historyButton = createIconButton({
+    iconName: 'view-list-symbolic',
+    tooltip: t().mainWindow.historyMenu,
+    onClick: () => {
+      addButton.setVisible(false)
+      budgetButton.setCssClasses(['page-switcher'])
+      historyButton.setCssClasses(['page-switcher', 'page-button-active'])
+      onShowHistory()
+    },
+  })
+  budgetButton.setCssClasses(['page-switcher', 'page-button-active'])
+  header.packStart(budgetButton)
+  header.packStart(historyButton)
   header.packEnd(new Gtk.MenuButton({
     iconName: 'open-menu-symbolic',
     menuModel: createMainMenu(),
     primary: true,
   }))
+  header.packEnd(addButton)
 
   const render = () => {
-    monthSwitcher.update({
-      selected: budgetStore.selectedMonth,
-      current: budgetStore.currentMonth,
-      monthsWithData: budgetStore.monthsWithData,
-      hasOlder: budgetStore.hasOlderMonth,
-      hasNewer: budgetStore.hasNewerMonth,
-    })
-
     // Nothing can be added while the server that holds the budget is silent.
     const writable = isWritable(remoteStorage.status)
     addButton.setSensitive(writable)
     addButton.setTooltipText(writable
-      ? `Ajouter une transaction — ${formatMonth(budgetStore.selectedMonth)}`
-      : 'Budget en lecture seule — serveur inaccessible')
+      ? `${t().mainWindow.addTransactionTooltip} — ${formatMonth(budgetStore.selectedMonth)}`
+      : t().mainWindow.serverUnreachable)
   }
 
   render()
@@ -185,11 +220,12 @@ export function createMainWindow({
   categoryStore,
   thresholdsStore,
   recurrenceStore,
+  generalSettingsStore,
   remoteStorage,
 }: MainWindowDeps): MainWindow {
   const window = new Adw.ApplicationWindow({ application })
   window.setTitle(APP_NAME)
-  window.setDefaultSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+  //window.setDefaultSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 
   const toasts = new Adw.ToastOverlay({ vexpand: true })
   const notify: Notify = (message) => toasts.addToast(new Adw.Toast({ title: message }))
@@ -203,12 +239,27 @@ export function createMainWindow({
   })
   toasts.setChild(budgetView.widget)
 
+  const historyView = createHistoryView()
+  const pages = new Gtk.Stack({ vexpand: true })
+  pages.addNamed(toasts, 'budget')
+  pages.addNamed(historyView.widget, 'history')
+  const showBudget = () => pages.setVisibleChildName('budget')
+  const showHistory = () => {
+    historyView.update(budgetStore.monthlyTotals)
+    pages.setVisibleChildName('history')
+  }
+  historyView.update(budgetStore.monthlyTotals)
+  const unsubscribeHistory = budgetStore.onChange(() => historyView.update(budgetStore.monthlyTotals))
+
   const header = createHeaderBar({
     parent: window,
     budgetStore,
     categoryStore,
     remoteStorage,
     notify,
+    onShowBudget: showBudget,
+    onShowHistory: showHistory,
+    isBudgetPage: () => pages.getVisibleChildName() === 'budget',
   })
 
   registerOptionsAction({
@@ -218,6 +269,7 @@ export function createMainWindow({
     categoryStore,
     thresholdsStore,
     recurrenceStore,
+    generalSettingsStore,
     remoteStorage,
   })
 
@@ -240,7 +292,7 @@ export function createMainWindow({
   const content = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
   content.append(header.widget)
   content.append(banner)
-  content.append(toasts)
+  content.append(pages)
   window.setContent(content)
 
   return {
@@ -249,6 +301,7 @@ export function createMainWindow({
       unsubscribeBanner()
       header.dispose()
       budgetView.dispose()
+      unsubscribeHistory()
     },
   }
 }

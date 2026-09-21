@@ -15,8 +15,8 @@ import Adw from 'gi:Adw-1'
 import type { CategoryStore } from '../../data/category-store.js'
 import { DEFAULT_CATEGORY_ICON, type Category } from '../../domain/category.js'
 import { t } from '../../i18n/index.js'
-import type { AdwEntryRow, AdwPreferencesGroup, GtkButton, GtkWidget } from '../gtk-types.js'
-import { iconLabel } from '../icons.js'
+import type { AdwEntryRow, AdwPreferencesGroup, GtkButton, GtkImage, GtkWidget } from '../gtk-types.js'
+import { iconLabel, setCategoryIcon } from '../icons.js'
 import type { Notify } from '../types.js'
 import { createRowActionButton } from '../widgets.js'
 import { createWriteGuard } from '../write-guard.js'
@@ -46,17 +46,20 @@ function createIconButton(
   parent: GtkWidget,
   onPick: (icon: string) => void,
 ): GtkButton {
+  const image = new Gtk.Image({ pixelSize: 20 })
+  setCategoryIcon(image, icon)
   const button = new Gtk.Button({
-    iconName: icon,
     tooltipText: iconTooltip(icon),
     cssClasses: ['flat', 'circular'],
     valign: Gtk.Align.CENTER,
   })
+  button.setChild(image)
 
   button.on('clicked', () => openIconPickerDialog(parent, {
-    selected: button.iconName,
+    selected: icon,
     onSelect: (next) => {
-      button.iconName = next
+      icon = next
+      setCategoryIcon(image, next)
       button.setTooltipText(iconTooltip(next))
       onPick(next)
     },
@@ -90,7 +93,7 @@ function createAddGroup(
 
       entry.text = ''
       icon = DEFAULT_CATEGORY_ICON
-      iconButton.iconName = icon
+      setCategoryIcon(iconButton.getChild() as GtkImage, icon)
       iconButton.setTooltipText(iconTooltip(icon))
       notify(strings.added)
     })

@@ -8,6 +8,7 @@
  */
 import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
+import Gdk from 'gi:Gdk-4.0'
 
 import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
@@ -19,6 +20,8 @@ export interface FormDialogOptions {
   title: string
   confirmLabel: string
   content: GtkWidget
+  /** Widget that receives focus once the dialog is presented. */
+  initialFocus?: GtkWidget
   width?: number
   height?: number
   /** Returns false to keep the dialog open, e.g. when the form is incomplete. */
@@ -27,9 +30,22 @@ export interface FormDialogOptions {
 
 export function openFormDialog(
   parent: GtkWidget,
-  { title, confirmLabel, content, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, onConfirm }: FormDialogOptions,
+  {
+    title,
+    confirmLabel,
+    content,
+    initialFocus,
+    width = DEFAULT_WIDTH,
+    height = DEFAULT_HEIGHT,
+    onConfirm,
+  }: FormDialogOptions,
 ): void {
-  const dialog = new Adw.Dialog({ title, contentWidth: width, contentHeight: height })
+  const dialog = new Adw.Dialog({
+    title,
+    contentWidth: width,
+    contentHeight: height,
+    focusWidget: initialFocus,
+  })
 
   const header = new Adw.HeaderBar({ showStartTitleButtons: false, showEndTitleButtons: false })
 
@@ -38,9 +54,20 @@ export function openFormDialog(
   header.packStart(cancelButton)
 
   const confirmButton = new Gtk.Button({ label: confirmLabel, cssClasses: ['suggested-action'] })
-  confirmButton.on('clicked', () => {
+  const confirm = () => {
     if (onConfirm()) dialog.close()
+  }
+  confirmButton.on('clicked', confirm)
+
+  const keyController = new Gtk.EventControllerKey({
+    propagationPhase: Gtk.PropagationPhase.CAPTURE,
   })
+  keyController.on('key-pressed', (keyval) => {
+    if (keyval !== Gdk.KEY_Return && keyval !== Gdk.KEY_KP_Enter) return false
+    confirm()
+    return true
+  })
+  content.addController(keyController)
   header.packEnd(confirmButton)
 
   const toolbar = new Adw.ToolbarView()

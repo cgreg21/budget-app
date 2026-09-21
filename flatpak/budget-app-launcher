@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+cd /app/share/budget-app
+exec /app/node/bin/node --import node-gtk/register dist/main.js "$@"

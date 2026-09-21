@@ -1,0 +1,38 @@
+app-id: com.arkdev.BudgetApp
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: budget-app
+build-options:
+  build-args:
+    - --share=network
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --filesystem=xdg-data:rw
+  - --talk-name=org.freedesktop.secrets
+modules:
+  - name: budget-app
+    buildsystem: simple
+    sources:
+      - type: dir
+        path: ..
+        dest: source
+      - type: file
+        url: https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.xz
+        dest-filename: node.tar.xz
+    build-commands:
+      - tar -xf node.tar.xz
+      - mv node-v22.14.0-linux-x64 /app/node
+      - cd source && /app/node/bin/npm ci
+      - cd source && /app/node/bin/npm run build
+      - cd source && /app/node/bin/npm prune --omit=dev
+      - mkdir -p /app/share/budget-app
+      - cp -a source/dist source/assets source/style.css source/node_modules source/package.json /app/share/budget-app/
+      - install -Dm755 source/flatpak/budget-app-launcher /app/bin/budget-app
+      - install -Dm644 source/flatpak/com.arkdev.BudgetApp.desktop /app/share/applications/com.arkdev.BudgetApp.desktop
+      - install -Dm644 source/flatpak/com.arkdev.BudgetApp.metainfo.xml /app/share/metainfo/com.arkdev.BudgetApp.metainfo.xml
+      - install -Dm644 source/assets/icons/com.arkdev.BudgetApp.svg /app/share/icons/hicolor/scalable/apps/com.arkdev.BudgetApp.svg

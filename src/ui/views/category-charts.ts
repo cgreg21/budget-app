@@ -7,7 +7,7 @@
  * only assigns colours and paints them with Cairo on a Gtk.DrawingArea.
  */
 import Gtk from 'gi:Gtk-4.0'
-import Pango from 'gi:Pango-1.0'
+import Gdk from 'gi:Gdk-4.0'
 
 import { sumByCategory, type CategoryTotal, type Transaction } from '../../domain/transaction.js'
 import { t } from '../../i18n/index.js'
@@ -15,7 +15,7 @@ import { asCairoContext, type Rgb } from '../cairo.js'
 import { formatAmount, formatPercent } from '../format.js'
 import type { GtkBox } from '../gtk-types.js'
 import type { Component } from '../types.js'
-import { clearBox } from '../widgets.js'
+import { clearBox, onNotify } from '../widgets.js'
 
 /** A qualitative palette, cycled through category by category. */
 const PALETTE: readonly Rgb[] = [
@@ -34,6 +34,7 @@ const PIE_PADDING = 6
 /** Floor for the pie; above it the chart grows with the column. */
 const PIE_MIN_SIZE = 120
 const SWATCH_SIZE = 12
+const HOVER_DELAY_MS = 0
 
 interface Slice {
   label: string
@@ -53,7 +54,10 @@ function sumSlices(slices: readonly Slice[]): number {
   return slices.reduce((total, slice) => total + slice.value, 0)
 }
 
-function createPie(slices: () => readonly Slice[]) {
+function createPie(
+  slices: () => readonly Slice[],
+  details: (slice: Slice, share: number) => string,
+) {
   const area = new Gtk.DrawingArea({
     contentWidth: PIE_MIN_SIZE,
     contentHeight: PIE_MIN_SIZE,
@@ -91,6 +95,95 @@ function createPie(slices: () => readonly Slice[]) {
     }
   })
 
+  const sliceAt = (x: number, y: number): Slice | undefined => {
+    const current = slices()
+    const total = sumSlices(current)
+    if (total <= 0) return undefined
+
+    const width = area.getAllocatedWidth()
+    const height = area.getAllocatedHeight()
+    const centerX = width / 2
+    const centerY = height / 2
+    const radius = Math.min(width, height) / 2 - PIE_PADDING
+    const distance = Math.hypot(x - centerX, y - centerY)
+    if (distance > radius) return undefined
+
+    let angle = Math.atan2(y - centerY, x - centerX) + Math.PI / 2
+    if (angle < 0) angle += Math.PI * 2
+
+    let covered = 0
+    for (const slice of current) {
+      covered += (slice.value / total) * Math.PI * 2
+      if (angle <= covered) return slice
+    }
+    return current.at(-1)
+  }
+
+  const popover = new Gtk.Popover({
+    autohide: false,
+    hasArrow: true,
+    position: Gtk.PositionType.TOP,
+    cssClasses: ['budget-details'],
+  })
+  popover.setParent(area)
+
+  let timer: NodeJS.Timeout | undefined
+  let activeSlice: Slice | undefined
+  const cancel = () => {
+    if (timer) clearTimeout(timer)
+    timer = undefined
+  }
+
+  const close = () => {
+    cancel()
+    activeSlice = undefined
+    popover.popdown()
+  }
+
+  const motion = new Gtk.EventControllerMotion()
+  motion.on('motion', (x, y) => {
+    const current = slices()
+    const total = sumSlices(current)
+    const slice = sliceAt(x, y)
+    if (!slice || total <= 0) {
+      close()
+      return
+    }
+    const pointingTo = new Gdk.Rectangle({
+      x: Math.round(x),
+      y: Math.round(y),
+      width: 1,
+      height: 1,
+    })
+    if (slice === activeSlice) {
+      popover.pointingTo = pointingTo
+      return
+    }
+
+    cancel()
+    timer = setTimeout(() => {
+      timer = undefined
+      activeSlice = slice
+      popover.pointingTo = pointingTo
+      popover.setChild(new Gtk.Label({
+        label: details(slice, slice.value / total),
+        marginTop: 8,
+        marginBottom: 8,
+        marginStart: 10,
+        marginEnd: 10,
+      }))
+      popover.popup()
+    }, HOVER_DELAY_MS)
+  })
+  motion.on('leave', close)
+  area.addController(motion)
+
+  onNotify(area, 'root', () => {
+    if (area.getRoot() !== null) return
+    close()
+    popover.unparent()
+  })
+
   return area
 }
 
@@ -115,7 +208,6 @@ function createLegendEntry(slice: Slice, share: number): GtkBox {
     label: `${slice.label} — ${formatAmount(slice.value)} (${formatPercent(share)})`,
     xalign: 0,
     hexpand: true,
-    ellipsize: Pango.EllipsizeMode.END,
   }))
   return entry
 }
@@ -123,7 +215,10 @@ function createLegendEntry(slice: Slice, share: number): GtkBox {
 function createPieChart(title: string): Component<readonly Slice[]> {
   let slices: readonly Slice[] = []
 
-  const area = createPie(() => slices)
+  const area = createPie(
+    () => slices,
+    (slice, share) => t().categoryCharts.sliceDetails(slice.label, formatAmount(slice.value), formatPercent(share)),
+  )
   const legend = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4, marginTop: 8 })
 
   // With the card's height now fixed, a long category list scrolls instead of
@@ -134,15 +229,26 @@ function createPieChart(title: string): Component<readonly Slice[]> {
   })
   legendScroller.setChild(legend)
 
+  const legendPopover = new Gtk.Popover()
+  legendPopover.setChild(legendScroller)
+  const legendButton = new Gtk.MenuButton({
+    iconName: 'help-about-symbolic',
+    tooltipText: t().categoryCharts.legendTooltip,
+    cssClasses: ['flat', 'circular'],
+    popover: legendPopover,
+  })
+  const header = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 6 })
+  header.append(new Gtk.Label({ label: title, cssClasses: ['title-4'], xalign: 0, hexpand: true }))
+  header.append(legendButton)
+
   const container = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
     spacing: 8,
     cssClasses: ['card', 'budget-card'],
     hexpand: true,
   })
-  container.append(new Gtk.Label({ label: title, cssClasses: ['title-4'], xalign: 0 }))
+  container.append(header)
   container.append(area)
-  container.append(legendScroller)
 
   return {
     widget: container,
@@ -174,16 +280,22 @@ export function createCategoryCharts(): Component<readonly Transaction[]> {
     vexpand: true,
   })
 
-  const expenseChart = createPieChart(t().categoryCharts.expenseTitle)
-  const incomeChart = createPieChart(t().categoryCharts.incomeTitle)
-  container.append(expenseChart.widget)
-  container.append(incomeChart.widget)
+  const recurringExpenseChart = createPieChart(t().categoryCharts.recurringExpenseTitle)
+  const otherExpenseChart = createPieChart(t().categoryCharts.otherExpenseTitle)
+  container.append(recurringExpenseChart.widget)
+  container.append(otherExpenseChart.widget)
 
   return {
     widget: container,
     update: (transactions) => {
-      expenseChart.update(toSlices(sumByCategory(transactions, 'expense')))
-      incomeChart.update(toSlices(sumByCategory(transactions, 'income')))
+      recurringExpenseChart.update(toSlices(sumByCategory(
+        transactions.filter((transaction) => transaction.recurrenceId !== undefined),
+        'expense',
+      )))
+      otherExpenseChart.update(toSlices(sumByCategory(
+        transactions.filter((transaction) => transaction.recurrenceId === undefined),
+        'expense',
+      )))
     },
   }
 }

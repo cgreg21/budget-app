@@ -11,7 +11,7 @@ import Adw from 'gi:Adw-1'
 
 import type { GtkWidget } from '../gtk-types.js'
 import { t } from '../../i18n/index.js'
-import { CATEGORY_ICON_CHOICES } from '../icons.js'
+import { CATEGORY_ICON_CHOICES, setCategoryIcon } from '../icons.js'
 
 const DIALOG_WIDTH = 400
 const DIALOG_HEIGHT = 420
@@ -47,11 +47,13 @@ export function openIconPickerDialog(
   })
 
   for (const { name, key } of CATEGORY_ICON_CHOICES) {
+    const image = new Gtk.Image({ pixelSize: 24 })
+    setCategoryIcon(image, name)
     const button = new Gtk.Button({
-      iconName: name,
       tooltipText: t().icons[key],
       cssClasses: name === selected ? ['circular', 'suggested-action'] : ['flat', 'circular'],
     })
+    button.setChild(image)
     button.on('clicked', () => {
       onSelect(name)
       dialog.close()

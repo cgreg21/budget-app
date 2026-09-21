@@ -17,6 +17,7 @@ export const DEFAULT_LOCALE: Locale = 'en'
 const SUPPORTED_LOCALES: readonly Locale[] = ['fr', 'en']
 
 const LOCALE_OVERRIDE_ENV = 'BUDGET_APP_LOCALE'
+let configuredLocale: Locale | undefined
 
 function isLocale(value: string): value is Locale {
   return (SUPPORTED_LOCALES as readonly string[]).includes(value)
@@ -44,6 +45,12 @@ function detectSystemLocale(): Locale {
  * between test cases, and asking the desktop again is cheap.
  */
 export function getLocale(): Locale {
+  if (configuredLocale !== undefined) return configuredLocale
   const override = process.env[LOCALE_OVERRIDE_ENV]
   return override !== undefined && isLocale(override) ? override : detectSystemLocale()
+}
+
+/** Applies the saved language for the current application session. */
+export function setLocale(locale: Locale): void {
+  configuredLocale = locale
 }

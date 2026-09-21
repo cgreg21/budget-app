@@ -7,6 +7,7 @@
  */
 
 import { getLocale, t, type Locale } from '../i18n/index.js'
+import { DEFAULT_GENERAL_SETTINGS, type GeneralSettings } from '../domain/general-settings.js'
 import type { MonthKey } from '../domain/month.js'
 import { endMonth, type Recurrence, type RecurrenceFrequency } from '../domain/recurrence.js'
 import type { RemoteStatus } from '../domain/remote.js'
@@ -15,6 +16,12 @@ import type { TransactionKind } from '../domain/transaction.js'
 const LOCALE_TAGS: Record<Locale, string> = {
   fr: 'fr-FR',
   en: 'en-US',
+}
+
+let displaySettings: GeneralSettings = DEFAULT_GENERAL_SETTINGS
+
+export function configureDisplaySettings(settings: GeneralSettings): void {
+  displaySettings = settings
 }
 
 function localeTag(): string {
@@ -34,12 +41,6 @@ function cachedFormatter<T>(
   }
   return formatter
 }
-
-const currencyFormatters = new Map<string, Intl.NumberFormat>()
-const currencyFormatter = () => cachedFormatter(currencyFormatters, (tag) => new Intl.NumberFormat(tag, {
-  style: 'currency',
-  currency: 'EUR',
-}))
 
 const dateFormatters = new Map<string, Intl.DateTimeFormat>()
 const dateFormatter = () => cachedFormatter(dateFormatters, (tag) => new Intl.DateTimeFormat(tag, {
@@ -71,7 +72,12 @@ function capitalize(text: string): string {
 }
 
 export function formatAmount(amount: number): string {
-  return currencyFormatter().format(amount)
+  const tag = displaySettings.amountFormat === 'space-comma' ? 'fr-FR'
+    : displaySettings.amountFormat === 'comma-dot' ? 'en-US' : localeTag()
+  return new Intl.NumberFormat(tag, {
+    style: 'currency',
+    currency: displaySettings.currency,
+  }).format(amount)
 }
 
 /** "+ 1 200,00 €" or "− 45,00 €": the sign comes from the kind, amounts are stored positive. */
@@ -81,8 +87,16 @@ export function formatSignedAmount(kind: TransactionKind, amount: number): strin
 
 /** Formats an ISO date ("2026-09-17"); unparsable values are shown as-is. */
 export function formatDate(isoDate: string): string {
+  if (displaySettings.dateFormat === 'yyyy-mm-dd') return isoDate
   const date = new Date(isoDate)
-  return Number.isNaN(date.getTime()) ? isoDate : dateFormatter().format(date)
+  if (Number.isNaN(date.getTime())) return isoDate
+  if (displaySettings.dateFormat === 'dd-mm-yyyy') {
+    return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+  }
+  if (displaySettings.dateFormat === 'mm-dd-yyyy') {
+    return new Intl.DateTimeFormat('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+  }
+  return dateFormatter().format(date)
 }
 
 export function formatPercent(ratio: number): string {

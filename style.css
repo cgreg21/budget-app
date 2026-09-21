@@ -12,6 +12,9 @@
  *   https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html
  */
 
+@define-color app-accent-fallback #3584e4;
+@define-color app-accent-foreground-fallback #ffffff;
+
 .budget-card {
   padding: 12px 16px;
 }
@@ -28,6 +31,29 @@
 
 .budget-expense {
   color: #c01c28;
+}
+
+/* Tabler SVGs use currentColor, so they follow the text colour of their parent. */
+.category-svg-icon {
+  color: inherit;
+}
+
+.add-transaction-button {
+  background-color: #c01c28;
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+.page-switcher {
+  border-radius: 6px;
+}
+
+.page-button-active {
+  background-color: @app-accent-fallback;
+  background-color: @accent_bg_color;
+  color: @app-accent-foreground-fallback;
+  color: @accent_fg_color;
 }
 
 /* Category icon in a coloured disc: white symbol on green or red. */
@@ -98,4 +124,9 @@ popover.budget-details > contents {
 
 .month-current {
   font-weight: bold;
+}
+
+/* Bottom tabs of the compact budget layout: icon-only, sized up for touch/visibility. */
+.budget-tab-switcher button image {
+  -gtk-icon-size: 64px;
 }

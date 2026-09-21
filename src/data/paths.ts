@@ -41,6 +41,9 @@ export const RECURRENCES_FILE = path.join(DATA_DIR, 'recurrences.json')
 /** Which server the budget is stored on, if any. Never holds the password. */
 export const REMOTE_CONFIG_FILE = path.join(DATA_DIR, 'remote.json')
 
+/** Local display and application preferences. */
+export const GENERAL_SETTINGS_FILE = path.join(DATA_DIR, 'general-settings.json')
+
 /** Single-file layout used before the per-month split; migrated on startup. */
 export const LEGACY_TRANSACTIONS_FILE = path.join(DATA_DIR, 'transactions.json')
 

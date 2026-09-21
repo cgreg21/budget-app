@@ -5,6 +5,7 @@
  * settings colouring the balance.
  */
 import Gtk from 'gi:Gtk-4.0'
+import Adw from 'gi:Adw-1'
 
 import type { BudgetStore } from '../../data/budget-store.js'
 import type { CategoryStore } from '../../data/category-store.js'
@@ -19,12 +20,18 @@ import { formatDate, formatSignedAmount } from '../format.js'
 import type { GtkWidget } from '../gtk-types.js'
 import type { DisposableComponent, Notify } from '../types.js'
 import { createWriteGuard } from '../write-guard.js'
+import { RECURRING_ICON } from '../widgets.js'
 import { createCategoryCharts } from './category-charts.js'
+import { createMonthSwitcher } from './month-switcher.js'
 import { createSummaryCards } from './summary-cards.js'
 import { createTransactionList } from './transaction-list.js'
 
-/** The list spans three of the four columns, leaving a quarter to the charts. */
-const LIST_COLUMNS = 3
+/** Below this width, recurring/other/charts become bottom tabs instead of columns. */
+const COMPACT_WIDTH = 800
+
+/** Icon-only tabs: the title set via addTitled still surfaces as the button's tooltip. */
+const OTHER_TAB_ICON = 'folder-symbolic'
+const CHARTS_TAB_ICON = 'utilities-system-monitor-symbolic'
 
 export interface BudgetViewDeps {
   /** Widget the edit dialog is presented on top of. */
@@ -45,6 +52,15 @@ export function createBudgetView({
   const summary = createSummaryCards()
   const charts = createCategoryCharts()
   const guard = createWriteGuard(notify)
+
+  const monthSwitcher = createMonthSwitcher({
+    onSelectOlder: () => budgetStore.selectOlderMonth(),
+    onSelectNewer: () => budgetStore.selectNewerMonth(),
+    onSelect: (month) => budgetStore.selectMonth(month),
+  })
+  monthSwitcher.widget.setHalign(Gtk.Align.CENTER)
+  monthSwitcher.widget.setMarginTop(12)
+  monthSwitcher.widget.setMarginBottom(6)
 
   /** Edit of a transaction that belongs to no series: nothing to arbitrate. */
   const applyEdit = (id: string, input: TransactionInput, settings: RecurrenceSettings | null) => guard(() => {
@@ -110,22 +126,94 @@ export function createBudgetView({
         }),
       })
     },
+  }, () => charts.update(list.filteredTransactions()))
+
+  // Side by side above COMPACT_WIDTH; below it, tabs at the bottom keep each
+  // panel readable instead of squeezing three columns into a narrow window.
+  const wideBody = new Gtk.Box({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    spacing: 12,
+    marginStart: 12,
+    marginEnd: 12,
+    vexpand: true,
   })
 
-  // Homogeneous columns hand the charts exactly a quarter of the width.
-  const body = new Gtk.Grid({ columnHomogeneous: true, vexpand: true })
-  body.attach(list.widget, 0, 0, LIST_COLUMNS, 1)
-  body.attach(charts.widget, LIST_COLUMNS, 0, 1, 1)
+  const compactStack = new Gtk.Stack({ hhomogeneous: false, vhomogeneous: false, vexpand: true })
+  const compactSwitcher = new Gtk.StackSwitcher({
+    stack: compactStack,
+    halign: Gtk.Align.CENTER,
+    marginTop: 6,
+    marginBottom: 6,
+    cssClasses: ['budget-tab-switcher'],
+  })
+
+  const bodyHost = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, vexpand: true })
+
+  // Seeded wide; the breakpoint below switches to tabs once it applies.
+  wideBody.append(list.recurring)
+  wideBody.append(list.other)
+  wideBody.append(charts.widget)
+  bodyHost.append(wideBody)
+
+  const setCompact = (compact: boolean) => {
+    if (compact) {
+      wideBody.remove(list.recurring)
+      wideBody.remove(list.other)
+      wideBody.remove(charts.widget)
+      bodyHost.remove(wideBody)
+
+      compactStack.addTitled(list.recurring, 'recurring', t().budgetView.tabRecurring).setIconName(RECURRING_ICON)
+      compactStack.addTitled(list.other, 'other', t().budgetView.tabOther).setIconName(OTHER_TAB_ICON)
+      compactStack.addTitled(charts.widget, 'charts', t().budgetView.tabCharts).setIconName(CHARTS_TAB_ICON)
+      bodyHost.append(compactStack)
+      bodyHost.append(compactSwitcher)
+    } else {
+      compactStack.remove(list.recurring)
+      compactStack.remove(list.other)
+      compactStack.remove(charts.widget)
+      bodyHost.remove(compactStack)
+      bodyHost.remove(compactSwitcher)
+
+      wideBody.append(list.recurring)
+      wideBody.append(list.other)
+      wideBody.append(charts.widget)
+      bodyHost.append(wideBody)
+    }
+  }
+
+  // A plain Gtk.Widget has no "width" property to watch — Adw.Breakpoint is
+  // libadwaita's own mechanism for reacting to a container's allocated size.
+  // BreakpointBin also drops its child's minimum size, which is what actually
+  // lets the window shrink below COMPACT_WIDTH in the first place.
+  const bodyBin = new Adw.BreakpointBin({ widthRequest: 360, heightRequest: 240, vexpand: true })
+  bodyBin.setChild(bodyHost)
+  const breakpoint = new Adw.Breakpoint({
+    condition: Adw.BreakpointCondition.parse(`max-width: ${COMPACT_WIDTH}px`),
+  })
+  breakpoint.on('apply', () => setCompact(true))
+  breakpoint.on('unapply', () => setCompact(false))
+  bodyBin.addBreakpoint(breakpoint)
 
   const root = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
+  root.append(monthSwitcher.widget)
   root.append(summary.widget)
-  root.append(body)
+  root.append(list.filters)
+  root.append(bodyBin)
 
   const render = () => {
     const { transactions } = budgetStore
     summary.update({ totals: budgetStore.totals, thresholds: thresholdsStore.thresholds })
-    charts.update(transactions)
     list.update({ transactions, categories: categoryStore.categories })
+    // Charts follow the filter bar, same as the lists — computed after
+    // list.update() so filteredTransactions() reflects the current month.
+    charts.update(list.filteredTransactions())
+    monthSwitcher.update({
+      selected: budgetStore.selectedMonth,
+      current: budgetStore.currentMonth,
+      monthsWithData: budgetStore.monthsWithData,
+      hasOlder: budgetStore.hasOlderMonth,
+      hasNewer: budgetStore.hasNewerMonth,
+    })
   }
 
   render()

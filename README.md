@@ -29,6 +29,69 @@ That's it — a window should appear. Edit `style.css` while it runs and the
 window restyles instantly, no restart. To also restart the app when you edit
 `src/`, run `npm run dev:app-reload` instead (it adds `node --watch`).
 
+## Flatpak Linux
+
+The project includes a Flatpak target under `flatpak/`. Install Flatpak and
+`flatpak-builder`, then run:
+
+```sh
+npm install
+npm run flatpak:build
+npm run flatpak:run
+```
+
+To create a distributable file after building:
+
+```sh
+npm run flatpak:bundle
+```
+
+This creates `budget-app.flatpak`. The manifest builds the TypeScript app and
+its native `node-gtk` dependency inside the GNOME 48 SDK, and includes the
+bundled SVG assets. The build currently targets Linux x86_64 because it embeds
+the matching Node.js runtime; an ARM64 manifest needs a separate Node.js
+archive.
+
+## AppImage Linux
+
+To build a portable AppImage, install `curl` and `tar`, then run:
+
+```sh
+npm install
+npm run appimage:build
+```
+
+The script downloads the matching Node.js and `linuxdeploy` binaries, builds
+the application, embeds the runtime, `node-gtk`, assets and stylesheet, then
+creates `Budget_App-x86_64.AppImage` (or the matching ARM64 filename) at the
+project root. The GTK 4 and libadwaita libraries remain provided by the host
+system, as is customary for GTK applications.
+
+## Windows
+
+Build the portable Windows x64 bundle from PowerShell on Windows:
+
+```powershell
+npm install
+npm run windows:build
+```
+
+This creates `Budget-App-windows-x64.zip` with a Node.js runtime, the compiled
+application, native dependencies and a `Budget App.cmd` launcher. GTK 4 and
+libadwaita must be installed on the Windows machine.
+
+## macOS Apple Silicon
+
+Build the arm64 `.app` bundle on an Apple Silicon Mac:
+
+```sh
+npm install
+npm run macos:arm:build
+```
+
+This creates `Budget-App-macos-arm64.zip`. GTK 4 and libadwaita are expected
+from Homebrew on the target Mac.
+
 ## How it works
 
 Namespaces are imported with the `gi:` scheme, and their default export is the

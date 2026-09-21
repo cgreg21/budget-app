@@ -49,14 +49,19 @@ function createCard(title: string, cssClass: string): Card {
 }
 
 export function createSummaryCards(): Component<SummaryState> {
-  const container = new Gtk.Box({
-    orientation: Gtk.Orientation.HORIZONTAL,
-    spacing: 12,
+  // FlowBox reflows its children onto a new line once they no longer fit,
+  // instead of squeezing them — unlike a plain Box.
+  const container = new Gtk.FlowBox({
+    homogeneous: true,
+    columnSpacing: 12,
+    rowSpacing: 12,
+    minChildrenPerLine: 1,
+    maxChildrenPerLine: 3,
+    selectionMode: Gtk.SelectionMode.NONE,
     marginTop: 12,
     marginBottom: 12,
     marginStart: 12,
     marginEnd: 12,
-    homogeneous: true,
   })
 
   const balance = createCard(t().summaryCards.balance, 'budget-balance')

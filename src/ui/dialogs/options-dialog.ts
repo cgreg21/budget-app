@@ -12,6 +12,7 @@ import Adw from 'gi:Adw-1'
 
 import type { BudgetStore } from '../../data/budget-store.js'
 import type { CategoryStore } from '../../data/category-store.js'
+import type { GeneralSettingsStore } from '../../data/general-settings-store.js'
 import type { RecurrenceStore } from '../../data/recurrence-store.js'
 import type { RemoteStorage } from '../../data/remote/remote-storage.js'
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
@@ -23,6 +24,7 @@ import { RECURRING_ICON } from '../widgets.js'
 import { createCategoriesGroups } from './categories-group.js'
 import { createCloudGroups } from './cloud-group.js'
 import { createDataGroups } from './data-group.js'
+import { createGeneralGroup } from './general-group.js'
 import { createRecurrencesGroup } from './recurrences-group.js'
 import { createThresholdsGroup } from './thresholds-group.js'
 
@@ -32,6 +34,7 @@ const DIALOG_HEIGHT = 620
 export interface OptionsDialogOptions {
   budgetStore: BudgetStore
   categoryStore: CategoryStore
+  generalSettingsStore: GeneralSettingsStore
   thresholdsStore: ThresholdsStore
   recurrenceStore: RecurrenceStore
   remoteStorage: RemoteStorage
@@ -44,6 +47,7 @@ export function openOptionsDialog(
   {
     budgetStore,
     categoryStore,
+    generalSettingsStore,
     thresholdsStore,
     recurrenceStore,
     remoteStorage,
@@ -57,6 +61,13 @@ export function openOptionsDialog(
   })
 
   const notify: Notify = (message) => dialog.addToast(new Adw.Toast({ title: message }))
+
+  const general = createGeneralGroup({ store: generalSettingsStore, notify })
+  const generalPage = new Adw.PreferencesPage({
+    title: t().optionsDialog.generalTab,
+    iconName: 'preferences-system-symbolic',
+  })
+  generalPage.add(general.group)
 
   const thresholds = createThresholdsGroup({ store: thresholdsStore, notify })
   const thresholdsPage = new Adw.PreferencesPage({
@@ -103,6 +114,7 @@ export function openOptionsDialog(
   })
   for (const group of cloud.groups) cloudPage.add(group)
 
+  dialog.add(generalPage)
   dialog.add(thresholdsPage)
   dialog.add(recurrencesPage)
   dialog.add(categoriesPage)
@@ -111,6 +123,7 @@ export function openOptionsDialog(
 
   dialog.on('closed', () => {
     thresholds.dispose()
+    general.dispose()
     recurrences.dispose()
     categories.dispose()
     cloud.dispose()

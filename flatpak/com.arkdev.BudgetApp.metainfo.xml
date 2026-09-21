@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.arkdev.BudgetApp</id>
+  <name>Budget App</name>
+  <summary>Personal budget management</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <developer id="com.arkdev">
+    <name>Ark</name>
+  </developer>
+  <description>
+    <p>Track income, expenses, recurring transactions and monthly balances.</p>
+  </description>
+  <launchable type="desktop-id">com.arkdev.BudgetApp.desktop</launchable>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.1.0" date="2026-09-19" />
+  </releases>
+</component>

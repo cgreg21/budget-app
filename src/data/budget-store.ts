@@ -36,7 +36,7 @@ import { computeTotals, type Totals, type Transaction, type TransactionInput } f
 import { createId } from './id.js'
 import type { StoreListener, Unsubscribe } from './json-file-store.js'
 import { migrateLegacyTransactions } from './legacy-migration.js'
-import { listStoredMonths, MonthStore } from './month-store.js'
+import { listStoredMonths, MonthStore, readMonthTransactions } from './month-store.js'
 import { MONTHS_DIR, monthFromFileName } from './paths.js'
 import type { RecurrenceStore } from './recurrence-store.js'
 
@@ -96,6 +96,14 @@ export class BudgetStore {
 
   get totals(): Totals {
     return computeTotals(this.transactions)
+  }
+
+  /** Totals for every month that has transactions, oldest first for charts. */
+  get monthlyTotals(): readonly { month: MonthKey, income: number, expense: number }[] {
+    return [...this.#monthsWithData].reverse().map((month) => {
+      const { income, expense } = computeTotals(readMonthTransactions(month))
+      return { month, income, expense }
+    })
   }
 
   /** Shows any month, with or without data; unknown keys are ignored. */

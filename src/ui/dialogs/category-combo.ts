@@ -18,6 +18,7 @@ import type {
   GtkListItem,
   GtkListItemFactory,
 } from '../gtk-types.js'
+import { setCategoryIcon } from '../icons.js'
 import { onNotify } from '../widgets.js'
 
 const ICON_SPACING = 12
@@ -47,7 +48,7 @@ function createIconFactory(categories: readonly Category[]): GtkListItemFactory 
 
     const image = item.getChild()?.getFirstChild() as GtkImage | null
     const label = image?.getNextSibling() as GtkLabel | null
-    if (image) image.iconName = category.icon
+    if (image) setCategoryIcon(image, category.icon)
     if (label) label.label = category.name
   })
 
@@ -72,7 +73,7 @@ export function createCategoryCombo(
   row.addPrefix(icon)
 
   const showIcon = () => {
-    icon.iconName = categories[row.selected]?.icon ?? DEFAULT_CATEGORY_ICON
+    setCategoryIcon(icon, categories[row.selected]?.icon ?? DEFAULT_CATEGORY_ICON)
   }
   onNotify(row, 'selected', showIcon)
   showIcon()
