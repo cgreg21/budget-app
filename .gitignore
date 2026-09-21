@@ -13,3 +13,5 @@ coverage/
 .DS_Store
 *.AppImage
 build/appimage
+Budget-App-windows-x64/
+Budget-App-windows-x64.zip
