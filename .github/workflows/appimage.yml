@@ -24,5 +24,6 @@ jobs:
 
     - name: Build
       run: |
+        sudo apt install libgtk-4-dev libadwaita-1-dev gobject-introspection -y
         npm install
         npm run appimage:build
