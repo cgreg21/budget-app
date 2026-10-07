@@ -11,8 +11,8 @@ import {
   sortRecurrences,
   type Recurrence,
   type RecurrenceInput,
-} from '../domain/recurrence.js'
-import type { MonthKey } from '../domain/month.js'
+  type MonthKey,
+} from 'budget-lib'
 import { createId } from './id.js'
 import { JsonFileStore } from './json-file-store.js'
 import { RECURRENCES_FILE } from './paths.js'

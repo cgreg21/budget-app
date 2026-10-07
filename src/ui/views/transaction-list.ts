@@ -16,13 +16,14 @@
 import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
-import { categoryIcon, type Category } from '../../domain/category.js'
 import {
+  categoryIcon,
+  type Category,
   filterTransactions,
   NO_FILTER,
   type Transaction,
   type TransactionFilter,
-} from '../../domain/transaction.js'
+} from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 import { clearListBox } from '../widgets.js'

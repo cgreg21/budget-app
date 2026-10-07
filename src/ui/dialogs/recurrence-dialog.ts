@@ -12,8 +12,6 @@ import {
   DEFAULT_CATEGORY_ICON,
   FALLBACK_CATEGORY,
   type Category,
-} from '../../domain/category.js'
-import {
   clampMonth,
   LAST_MONTH,
   FIRST_MONTH,
@@ -21,15 +19,13 @@ import {
   monthNumberOf,
   yearOf,
   type MonthKey,
-} from '../../domain/month.js'
-import {
   FIRST_DAY,
   LAST_DAY,
   RECURRENCE_FREQUENCIES,
   type Recurrence,
   type RecurrenceInput,
-} from '../../domain/recurrence.js'
-import type { TransactionKind } from '../../domain/transaction.js'
+  type TransactionKind,
+} from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import { formatFrequency, formatMonthName } from '../format.js'
 import type { AdwSpinRow, GtkAdjustment, GtkWidget } from '../gtk-types.js'

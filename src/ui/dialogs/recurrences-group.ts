@@ -11,8 +11,7 @@ import Adw from 'gi:Adw-1'
 
 import type { CategoryStore } from '../../data/category-store.js'
 import type { RecurrenceStore } from '../../data/recurrence-store.js'
-import type { MonthKey } from '../../domain/month.js'
-import type { Recurrence } from '../../domain/recurrence.js'
+import type { MonthKey, Recurrence } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import {
   formatFrequency,

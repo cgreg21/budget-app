@@ -7,11 +7,16 @@
  */
 
 import { getLocale, t, type Locale } from '../i18n/index.js'
-import { DEFAULT_GENERAL_SETTINGS, type GeneralSettings } from '../domain/general-settings.js'
-import type { MonthKey } from '../domain/month.js'
-import { endMonth, type Recurrence, type RecurrenceFrequency } from '../domain/recurrence.js'
-import type { RemoteStatus } from '../domain/remote.js'
-import type { TransactionKind } from '../domain/transaction.js'
+import {
+  DEFAULT_GENERAL_SETTINGS,
+  type GeneralSettings,
+  type MonthKey,
+  endMonth,
+  type Recurrence,
+  type RecurrenceFrequency,
+  type RemoteStatus,
+  type TransactionKind,
+} from 'budget-lib'
 
 const LOCALE_TAGS: Record<Locale, string> = {
   fr: 'fr-FR',
@@ -148,6 +153,7 @@ export function describeRemoteStatus(status: RemoteStatus): string {
     case 'disabled':
       return strings.localStorage
     case 'connecting':
+    case 'syncing':
       return strings.connecting
     case 'online':
       return status.lastSyncedAt

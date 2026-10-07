@@ -8,7 +8,7 @@
  */
 import Adw from 'gi:Adw-1'
 
-import type { ImportMode } from '../../domain/backup.js'
+import type { ImportMode } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 

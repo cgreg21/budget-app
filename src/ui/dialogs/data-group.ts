@@ -23,8 +23,7 @@ import {
   type BackupStores,
   type CsvImportReport,
 } from '../../data/backup-service.js'
-import { countBackup, type BackupCounts, type ImportMode } from '../../domain/backup.js'
-import { todayIsoDate } from '../../domain/transaction.js'
+import { countBackup, type BackupCounts, type ImportMode, todayIsoDate } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type { AdwPreferencesGroup, GtkWidget } from '../gtk-types.js'
 import type { Notify } from '../types.js'

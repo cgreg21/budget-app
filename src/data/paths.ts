@@ -20,7 +20,7 @@
 import GLib from 'gi:GLib-2.0'
 import path from 'node:path'
 
-import { isMonthKey, type MonthKey } from '../domain/month.js'
+import { isMonthKey, type MonthKey } from 'budget-lib'
 
 const DATA_DIR_NAME = 'budget-app'
 const MONTH_FILE_EXTENSION = '.json'

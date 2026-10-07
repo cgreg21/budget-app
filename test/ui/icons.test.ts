@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CATEGORY_ICON_CHOICES, iconLabel } from '../../src/ui/icons.js'
-import { DEFAULT_CATEGORIES } from '../../src/domain/category.js'
+import { DEFAULT_CATEGORIES } from 'budget-lib'
 
 describe('CATEGORY_ICON_CHOICES', () => {
   it('is not empty', () => {

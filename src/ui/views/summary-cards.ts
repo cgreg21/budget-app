@@ -7,8 +7,7 @@
  */
 import Gtk from 'gi:Gtk-4.0'
 
-import { balanceLevel, type BalanceThresholds } from '../../domain/balance.js'
-import type { Totals } from '../../domain/transaction.js'
+import { balanceLevel, type BalanceThresholds, type Totals } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import { formatAmount } from '../format.js'
 import type { GtkWidget } from '../gtk-types.js'

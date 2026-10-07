@@ -9,7 +9,7 @@
 import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
-import { DEFAULT_CATEGORY_ICON, FALLBACK_CATEGORY, type Category } from '../../domain/category.js'
+import { DEFAULT_CATEGORY_ICON, FALLBACK_CATEGORY, type Category } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type {
   AdwComboRow,

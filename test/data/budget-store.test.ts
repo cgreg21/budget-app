@@ -7,8 +7,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { currentMonthKey, FIRST_MONTH, LAST_MONTH } from '../../src/domain/month.js'
-import type { Transaction, TransactionInput } from '../../src/domain/transaction.js'
+import {
+  currentMonthKey,
+  FIRST_MONTH,
+  LAST_MONTH,
+  type Transaction,
+  type TransactionInput,
+} from 'budget-lib'
 import {
   createTempUserDataDir,
   removeTempUserDataDir,

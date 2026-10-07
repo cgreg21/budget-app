@@ -13,7 +13,7 @@
  */
 import Gtk from 'gi:Gtk-4.0'
 
-import { computeTotals, type Transaction } from '../../domain/transaction.js'
+import { computeTotals, type Transaction } from 'budget-lib'
 import { formatAmount } from '../format.js'
 import { t } from '../../i18n/index.js'
 import type { Component } from '../types.js'

@@ -1,6 +1,6 @@
 import Adw from 'gi:Adw-1'
 
-import type { Theme } from '../domain/general-settings.js'
+import type { Theme } from 'budget-lib'
 
 type StyleManagerClass = typeof Adw.StyleManager & {
   getDefault(): InstanceType<typeof Adw.StyleManager>

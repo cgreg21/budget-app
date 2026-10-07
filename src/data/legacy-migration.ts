@@ -8,8 +8,7 @@
  */
 import fs from 'node:fs'
 
-import { groupByMonth } from '../domain/month.js'
-import { isTransactionArray, sortByDateDesc } from '../domain/transaction.js'
+import { groupByMonth, isTransactionArray, sortByDateDesc } from 'budget-lib'
 import { LEGACY_TRANSACTIONS_FILE, MONTHS_DIR, monthFilePath } from './paths.js'
 
 const MIGRATED_SUFFIX = '.migrated'

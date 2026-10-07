@@ -15,7 +15,7 @@
  * Nothing here ever logs, serialises or returns the password except to the
  * caller that asked for it.
  */
-import { normalizeBaseUrl, type RemoteConfig } from '../../domain/remote.js'
+import { normalizeBaseUrl, type RemoteConfig } from 'budget-lib'
 
 /** Identifies our entries among everything else in the keyring. */
 const SCHEMA_NAME = 'org.gtk.budget-app.Remote'

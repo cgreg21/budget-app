@@ -10,7 +10,7 @@ import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
-import { areThresholdsOrdered, type BalanceThresholds } from '../../domain/balance.js'
+import { areThresholdsOrdered, type BalanceThresholds } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type { AdwPreferencesGroup, AdwSpinRow } from '../gtk-types.js'
 import type { Notify } from '../types.js'

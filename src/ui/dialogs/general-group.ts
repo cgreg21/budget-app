@@ -2,13 +2,7 @@ import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
 import type { GeneralSettingsStore } from '../../data/general-settings-store.js'
-import type {
-  AmountFormat,
-  AppLanguage,
-  Currency,
-  DateFormat,
-  Theme,
-} from '../../domain/general-settings.js'
+import type { AmountFormat, AppLanguage, Currency, DateFormat, Theme } from 'budget-lib'
 import { setLocale, t } from '../../i18n/index.js'
 import { configureDisplaySettings } from '../format.js'
 import { applyTheme } from '../theme.js'

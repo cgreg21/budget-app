@@ -25,14 +25,15 @@ import {
   monthKeyOf,
   shiftMonth,
   type MonthKey,
-} from '../domain/month.js'
-import {
   missingOccurrences,
   recurrenceFromTransaction,
   type Recurrence,
   type RecurrenceSettings,
-} from '../domain/recurrence.js'
-import { computeTotals, type Totals, type Transaction, type TransactionInput } from '../domain/transaction.js'
+  computeTotals,
+  type Totals,
+  type Transaction,
+  type TransactionInput,
+} from 'budget-lib'
 import { createId } from './id.js'
 import type { StoreListener, Unsubscribe } from './json-file-store.js'
 import { migrateLegacyTransactions } from './legacy-migration.js'

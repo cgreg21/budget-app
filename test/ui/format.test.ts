@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { Recurrence } from '../../src/domain/recurrence.js'
+import type { Recurrence } from 'budget-lib'
 import {
   describeRemoteStatus,
   formatAmount,

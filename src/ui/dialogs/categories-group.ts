@@ -13,7 +13,7 @@ import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
 import type { CategoryStore } from '../../data/category-store.js'
-import { DEFAULT_CATEGORY_ICON, type Category } from '../../domain/category.js'
+import { DEFAULT_CATEGORY_ICON, type Category } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type { AdwEntryRow, AdwPreferencesGroup, GtkButton, GtkImage, GtkWidget } from '../gtk-types.js'
 import { iconLabel, setCategoryIcon } from '../icons.js'

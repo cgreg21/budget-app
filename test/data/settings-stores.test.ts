@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { DEFAULT_BALANCE_THRESHOLDS } from '../../src/domain/balance.js'
+import { DEFAULT_BALANCE_THRESHOLDS } from 'budget-lib'
 import {
   createTempUserDataDir,
   readJson,

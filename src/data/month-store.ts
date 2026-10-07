@@ -11,13 +11,14 @@
  */
 import fs from 'node:fs'
 
-import { compareMonthsDesc, type MonthKey } from '../domain/month.js'
 import {
+  compareMonthsDesc,
+  type MonthKey,
   isTransactionArray,
   sortByDateDesc,
   type Transaction,
   type TransactionInput,
-} from '../domain/transaction.js'
+} from 'budget-lib'
 import { createId } from './id.js'
 import { JsonFileStore } from './json-file-store.js'
 import { MONTHS_DIR, monthFilePath, monthFromFileName } from './paths.js'

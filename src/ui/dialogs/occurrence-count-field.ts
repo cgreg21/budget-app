@@ -9,7 +9,7 @@
 import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
-import { MAX_OCCURRENCES, MIN_OCCURRENCES } from '../../domain/recurrence.js'
+import { MAX_OCCURRENCES, MIN_OCCURRENCES } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 import { onNotify } from '../widgets.js'

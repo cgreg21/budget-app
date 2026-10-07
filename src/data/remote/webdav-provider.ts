@@ -15,7 +15,7 @@
  * so a tolerant scan is both shorter and less brittle than pinning down a
  * schema. Anything unrecognised is simply not listed.
  */
-import { remoteUrl } from '../../domain/remote.js'
+import { remoteUrl } from 'budget-lib'
 import { RemoteRequestError, type RemoteEntry, type RemoteProvider } from './provider.js'
 
 /** Long enough for a sleepy server, short enough to not freeze a save. */

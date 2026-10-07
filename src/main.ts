@@ -2,7 +2,7 @@
  * Budget App — an Adwaita personal budget manager built with node-gtk.
  *
  * This file is only the bootstrap; everything else lives in layers:
- *   src/domain/ — the model and its rules (no GTK, no I/O)
+ *   budget-lib  — the model and its rules (shared package, no GTK, no I/O)
  *   src/data/   — JSON-file backed observable stores
  *   src/ui/     — widgets, views and dialogs
  *   src/app/    — window composition and application lifecycle

@@ -9,7 +9,7 @@
 import Gtk from 'gi:Gtk-4.0'
 import Gdk from 'gi:Gdk-4.0'
 
-import { sumByCategory, type CategoryTotal, type Transaction } from '../../domain/transaction.js'
+import { sumByCategory, type CategoryTotal, type Transaction } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import { asCairoContext, type Rgb } from '../cairo.js'
 import { formatAmount, formatPercent } from '../format.js'

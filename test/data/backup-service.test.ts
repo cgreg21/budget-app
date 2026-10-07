@@ -2,9 +2,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { BACKUP_FORMAT, BACKUP_VERSION } from '../../src/domain/backup.js'
-import { DEFAULT_BALANCE_THRESHOLDS } from '../../src/domain/balance.js'
-import type { Transaction } from '../../src/domain/transaction.js'
+import {
+  BACKUP_FORMAT,
+  BACKUP_VERSION,
+  DEFAULT_BALANCE_THRESHOLDS,
+  type Transaction,
+} from 'budget-lib'
 import {
   createTempUserDataDir,
   removeTempUserDataDir,

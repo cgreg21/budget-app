@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import type { Recurrence, RecurrenceInput } from '../../src/domain/recurrence.js'
+import type { Recurrence, RecurrenceInput } from 'budget-lib'
 import {
   createTempUserDataDir,
   readJson,

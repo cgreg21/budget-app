@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CredentialStore } from '../../../src/data/remote/credentials.js'
 import type { RemoteEntry, RemoteProvider } from '../../../src/data/remote/provider.js'
-import type { RemoteConfig } from '../../../src/domain/remote.js'
+import type { RemoteConfig } from 'budget-lib'
 import {
   createTempUserDataDir,
   removeTempUserDataDir,

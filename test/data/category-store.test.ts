@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { DEFAULT_CATEGORIES, DEFAULT_CATEGORY_ICON } from '../../src/domain/category.js'
+import { DEFAULT_CATEGORIES, DEFAULT_CATEGORY_ICON } from 'budget-lib'
 import {
   createTempUserDataDir,
   readJson,

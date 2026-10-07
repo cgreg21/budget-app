@@ -17,11 +17,7 @@ import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
 import type { RemoteStorage } from '../../data/remote/remote-storage.js'
-import {
-  normalizeRemoteConfig,
-  type RemoteConfig,
-  type RemoteState,
-} from '../../domain/remote.js'
+import { normalizeRemoteConfig, type RemoteConfig, type RemoteState } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import { describeRemoteStatus } from '../format.js'
 import type { AdwPreferencesGroup } from '../gtk-types.js'
@@ -166,6 +162,7 @@ export function createCloudGroups({ storage, notify }: CloudGroupOptions): Cloud
 const STATUS_ICONS: Record<RemoteState, string> = {
   disabled: 'drive-harddisk-symbolic',
   connecting: 'content-loading-symbolic',
+  syncing: 'content-loading-symbolic',
   online: 'network-transmit-receive-symbolic',
   offline: 'network-offline-symbolic',
   error: 'dialog-warning-symbolic',

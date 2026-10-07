@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { CredentialStore, PASSWORD_ENV_VARS } from '../../../src/data/remote/credentials.js'
-import type { RemoteConfig } from '../../../src/domain/remote.js'
+import type { RemoteConfig } from 'budget-lib'
 import { clearStubbedKeyring } from '../../helpers/secret-stub.js'
 
 const config: RemoteConfig = {

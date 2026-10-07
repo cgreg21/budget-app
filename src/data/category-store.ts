@@ -17,7 +17,7 @@ import {
   isLegacyCategoryList,
   normalizeCategoryName,
   type Category,
-} from '../domain/category.js'
+} from 'budget-lib'
 import { JsonFileStore } from './json-file-store.js'
 import { CATEGORIES_FILE } from './paths.js'
 

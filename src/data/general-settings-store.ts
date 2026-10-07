@@ -1,9 +1,5 @@
 /* Persisted display preferences, kept local to this machine. */
-import {
-  DEFAULT_GENERAL_SETTINGS,
-  isGeneralSettings,
-  type GeneralSettings,
-} from '../domain/general-settings.js'
+import { DEFAULT_GENERAL_SETTINGS, isGeneralSettings, type GeneralSettings } from 'budget-lib'
 import { JsonFileStore } from './json-file-store.js'
 import { GENERAL_SETTINGS_FILE } from './paths.js'
 

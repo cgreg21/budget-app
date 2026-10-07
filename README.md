@@ -21,7 +21,7 @@ You also need **Node.js ≥ 20.6** (for the `gi:` import hooks).
 ## Getting started
 
 ```sh
-npm install        # installs deps and generates TypeScript types (postinstall)
+npm install        # installs deps (fetches budget-lib from Git) and generates TypeScript types (postinstall)
 npm run dev        # run the app with live reload
 ```
 
@@ -150,15 +150,6 @@ The code is organised in layers, from the model outwards to the toolkit:
 .
 ├── src/
 │   ├── main.ts                       # bootstrap — loads the stylesheet, starts the app
-│   ├── domain/                       # the model and its rules (no GTK, no I/O)
-│   │   ├── transaction.ts            #   Transaction, Totals, validation, sorting, aggregation
-│   │   ├── month.ts                  #   month keys ("2026-09"), arithmetic, bounds, ordering
-│   │   ├── balance.ts                #   thresholds (x < y < z) and balance bands
-│   │   ├── recurrence.ts             #   recurring templates and the occurrences they owe
-│   │   ├── backup.ts                 #   the backup archive: shape, checks, merge
-│   │   ├── csv.ts                    #   transactions as a spreadsheet sees them
-│   │   ├── remote.ts                 #   the rules of the remote storage (paths, status, read-only)
-│   │   └── category.ts               #   categories (name + icon) and their rules
 │   ├── data/                         # persistence
 │   │   ├── paths.ts                  #   where the JSON files live
 │   │   ├── id.ts                     #   identifiers shared by the stores
@@ -218,7 +209,6 @@ The code is organised in layers, from the model outwards to the toolkit:
 │       └── application.ts            #   lifecycle, actions, shutdown
 ├── test/                             # Vitest suites, mirroring src/
 │   ├── helpers/                      #   a throwaway data dir, GLib and libsecret stubs
-│   ├── domain/                       #   the rules, tested in isolation
 │   ├── data/                         #   the stores, against real files in a temp dir
 │   └── ui/                           #   the pure helpers (formatting, icons, write guard)
 ├── style.css          # custom CSS (hot-reloads live under `npm run dev`)
@@ -227,8 +217,10 @@ The code is organised in layers, from the model outwards to the toolkit:
 └── package.json
 ```
 
-Dependencies only point downwards: `app` → `ui` → `data` → `domain`. The domain
-layer is plain TypeScript, so its rules can be read (and reused) without GTK.
+Dependencies only point downwards: `app` → `ui` → `data` → `budget-lib`. The model and
+its rules (transactions, months, recurrences, backup, CSV, remote paths…) come from the
+sibling package [`budget-lib`](https://github.com/cgreg21/budget-lib), shared with the mobile app. It is plain
+TypeScript and is tested in its own project.
 
 ## Gestion de budget personnel
 
@@ -356,7 +348,7 @@ et le cache en place fait office de budget.
 
 ## Tests
 
-La logique — le domaine, les stores, les rares fonctions pures de l'interface —
+La logique — les stores, les rares fonctions pures de l'interface —
 est couverte par [Vitest](https://vitest.dev/), sans GTK :
 
 ```sh

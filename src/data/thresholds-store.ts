@@ -6,11 +6,7 @@
  * the options dialog or from a hand-edited file — in the latter case the
  * defaults are used instead.
  */
-import {
-  DEFAULT_BALANCE_THRESHOLDS,
-  isBalanceThresholds,
-  type BalanceThresholds,
-} from '../domain/balance.js'
+import { DEFAULT_BALANCE_THRESHOLDS, isBalanceThresholds, type BalanceThresholds } from 'budget-lib'
 import { JsonFileStore } from './json-file-store.js'
 import { THRESHOLDS_FILE } from './paths.js'
 

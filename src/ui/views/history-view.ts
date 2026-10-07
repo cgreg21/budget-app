@@ -1,7 +1,7 @@
 import Gtk from 'gi:Gtk-4.0'
 import Gdk from 'gi:Gdk-4.0'
 
-import type { MonthKey } from '../../domain/month.js'
+import type { MonthKey } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import { formatAmount, formatMonth, formatShortMonthName } from '../format.js'
 import { asCairoContext } from '../cairo.js'

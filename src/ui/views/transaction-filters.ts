@@ -14,13 +14,13 @@
  */
 import Gtk from 'gi:Gtk-4.0'
 
-import type { Category } from '../../domain/category.js'
 import {
+  type Category,
   isFilterActive,
   NO_FILTER,
   type TransactionFilter,
   type TransactionKind,
-} from '../../domain/transaction.js'
+} from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type { GtkCheckButton, GtkWidget } from '../gtk-types.js'
 import { clearBox, onNotify } from '../widgets.js'

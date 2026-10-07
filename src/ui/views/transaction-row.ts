@@ -13,8 +13,7 @@
 import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
-import type { Recurrence } from '../../domain/recurrence.js'
-import type { Transaction } from '../../domain/transaction.js'
+import type { Recurrence, Transaction } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import {
   formatDate,

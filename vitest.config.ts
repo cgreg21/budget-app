@@ -29,8 +29,8 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: [
         // Widget code: it needs a live GTK/Adwaita runtime, so it cannot be
-        // exercised headlessly. The logic it relies on lives in src/domain
-        // and src/data, which are covered in full.
+        // exercised headlessly. The logic it relies on         lives in budget-lib
+                // and src/data.
         'src/main.ts',
         'src/app/**',
         'src/ui/widgets.ts',
@@ -45,7 +45,7 @@ export default defineConfig({
       ],
       // Statements, lines and functions are covered in full. The ten branches
       // left out are unreachable defensive fallbacks: `row[0] ?? ''` and
-      // friends in domain/csv.ts, the same pattern in remote-storage.ts, and
+      // friends in the former domain/csv.ts, the same pattern in remote-storage.ts, and
       // the empty-name check in webdav-provider.ts. They are kept because
       // TypeScript types an index access as possibly undefined even where an
       // earlier length check rules it out.

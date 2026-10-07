@@ -15,7 +15,7 @@ import {
   isRemoteConfig,
   normalizeRemoteConfig,
   type RemoteConfig,
-} from '../../domain/remote.js'
+} from 'budget-lib'
 import { JsonFileStore } from '../json-file-store.js'
 import { REMOTE_CONFIG_FILE } from '../paths.js'
 

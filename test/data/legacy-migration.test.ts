@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Transaction } from '../../src/domain/transaction.js'
+import type { Transaction } from 'budget-lib'
 import {
   createTempUserDataDir,
   readJson,

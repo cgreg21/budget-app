@@ -16,18 +16,14 @@ import {
   DEFAULT_CATEGORY_ICON,
   FALLBACK_CATEGORY,
   type Category,
-} from '../../domain/category.js'
-import {
   RECURRENCE_FREQUENCIES,
   type Recurrence,
   type RecurrenceFrequency,
   type RecurrenceSettings,
-} from '../../domain/recurrence.js'
-import type {
-  Transaction,
-  TransactionInput,
-  TransactionKind,
-} from '../../domain/transaction.js'
+  type Transaction,
+  type TransactionInput,
+  type TransactionKind,
+} from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import { formatFrequency } from '../format.js'
 import type { GtkWidget } from '../gtk-types.js'

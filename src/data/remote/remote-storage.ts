@@ -24,6 +24,7 @@ import path from 'node:path'
 import {
   DISABLED_STATUS,
   isRemoteActive,
+  isRemoteSettingsFile,
   isWritable,
   monthFromRemoteName,
   remoteMonthPath,
@@ -33,7 +34,7 @@ import {
   MONTHS_DIR_NAME,
   type RemoteConfig,
   type RemoteStatus,
-} from '../../domain/remote.js'
+} from 'budget-lib'
 import type { StoreListener, Unsubscribe } from '../json-file-store.js'
 import { DATA_DIR, MONTHS_DIR, monthFilePath, monthFromFileName } from '../paths.js'
 import { CredentialStore } from './credentials.js'
@@ -300,7 +301,7 @@ export class RemoteStorage implements RemoteGateway {
     if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) return null
 
     const segments = relative.split(path.sep)
-    if (segments.length === 1 && REMOTE_SETTINGS_FILES.includes(segments[0] ?? '')) {
+    if (segments.length === 1 && isRemoteSettingsFile(segments[0] ?? '')) {
       return remotePathOf(config, segments[0] as string)
     }
     if (segments.length === 2 && segments[0] === MONTHS_DIR_NAME) {

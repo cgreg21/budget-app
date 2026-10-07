@@ -23,11 +23,14 @@ import {
   type BackupCounts,
   type BackupData,
   type ImportMode,
-} from '../domain/backup.js'
-import { DEFAULT_CATEGORY_ICON, type Category } from '../domain/category.js'
-import { csvToTransactions, transactionsToCsv } from '../domain/csv.js'
-import { monthKeyOf, type MonthKey } from '../domain/month.js'
-import type { Transaction } from '../domain/transaction.js'
+  DEFAULT_CATEGORY_ICON,
+  type Category,
+  csvToTransactions,
+  transactionsToCsv,
+  monthKeyOf,
+  type MonthKey,
+  type Transaction,
+} from 'budget-lib'
 import type { BudgetStore } from './budget-store.js'
 import type { CategoryStore } from './category-store.js'
 import { createId } from './id.js'
