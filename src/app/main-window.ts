@@ -15,17 +15,17 @@ import Gio from 'gi:Gio-2.0'
 import Adw from 'gi:Adw-1'
 import Gdk from 'gi:Gdk-4.0'
 
+import type { BankService } from '../data/bank/bank-service.js'
 import type { BudgetStore } from '../data/budget-store.js'
+import type { CalendarSyncService } from '../data/calendar/calendar-sync-service.js'
 import type { CategoryStore } from '../data/category-store.js'
 import type { GeneralSettingsStore } from '../data/general-settings-store.js'
 import type { RecurrenceStore } from '../data/recurrence-store.js'
-import type { RemoteStorage } from '../data/remote/remote-storage.js'
 import type { ThresholdsStore } from '../data/thresholds-store.js'
-import { isWritable } from 'budget-lib'
 import { t } from '../i18n/index.js'
 import { openOptionsDialog } from '../ui/dialogs/options-dialog.js'
 import { openTransactionDialog } from '../ui/dialogs/transaction-dialog.js'
-import { formatMonth } from '../ui/format.js'
+import { describeCalendarState, formatCalendarLastSync, formatMonth } from '../ui/format.js'
 import type {
   AdwApplication,
   AdwApplicationWindow,
@@ -36,7 +36,6 @@ import type { DisposableComponent, Notify } from '../ui/types.js'
 import { createBudgetView } from '../ui/views/budget-view.js'
 import { createHistoryView } from '../ui/views/history-view.js'
 import { createIconButton } from '../ui/widgets.js'
-import { createWriteGuard } from '../ui/write-guard.js'
 import { APP_NAME } from './app-info.js'
 
 // Wide enough for the transaction list and the charts column side by side.
@@ -50,7 +49,8 @@ export interface MainWindowDeps {
   thresholdsStore: ThresholdsStore
   recurrenceStore: RecurrenceStore
   generalSettingsStore: GeneralSettingsStore
-  remoteStorage: RemoteStorage
+  bankService: BankService
+  calendarSyncService: CalendarSyncService
 }
 
 export interface MainWindow {
@@ -60,10 +60,10 @@ export interface MainWindow {
 }
 
 interface HeaderBarDeps {
+  calendarSyncService: CalendarSyncService
   parent: GtkWidget
   budgetStore: BudgetStore
   categoryStore: CategoryStore
-  remoteStorage: RemoteStorage
   notify: Notify
   onShowBudget(): void
   onShowHistory(): void
@@ -86,7 +86,8 @@ interface OptionsActionDeps {
   thresholdsStore: ThresholdsStore
   recurrenceStore: RecurrenceStore
   generalSettingsStore: GeneralSettingsStore
-  remoteStorage: RemoteStorage
+  bankService: BankService
+  calendarSyncService: CalendarSyncService
 }
 
 /** The options entry lives in the main menu, so it is driven by an action. */
@@ -98,7 +99,8 @@ function registerOptionsAction({
   thresholdsStore,
   recurrenceStore,
   generalSettingsStore,
-  remoteStorage,
+  bankService,
+  calendarSyncService,
 }: OptionsActionDeps): void {
   const action = Gio.SimpleAction.new('options', null)
   action.on('activate', () => openOptionsDialog(window, {
@@ -107,7 +109,8 @@ function registerOptionsAction({
     thresholdsStore,
     recurrenceStore,
     generalSettingsStore,
-    remoteStorage,
+    bankService,
+    calendarSyncService,
     // Read on activation: a new recurrence starts from the month on screen.
     selectedMonth: budgetStore.selectedMonth,
   }))
@@ -115,24 +118,22 @@ function registerOptionsAction({
 }
 
 function createHeaderBar({
+  calendarSyncService,
   parent,
   budgetStore,
   categoryStore,
-  remoteStorage,
   notify,
   onShowBudget,
   onShowHistory,
   isBudgetPage,
 }: HeaderBarDeps): DisposableComponent {
   const header = new Adw.HeaderBar()
-  const guard = createWriteGuard(notify)
 
   const addTransaction = () => {
-    if (!isWritable(remoteStorage.status)) return
     openTransactionDialog(parent, {
       categories: categoryStore.categories,
       defaultDate: budgetStore.defaultTransactionDate,
-      onSubmit: ({ input, recurrence }) => guard(() => {
+      onSubmit: ({ input, recurrence }) => {
         if (recurrence === null) {
           budgetStore.add(input)
           notify(t().mainWindow.added)
@@ -140,7 +141,7 @@ function createHeaderBar({
         }
         budgetStore.addRecurring(input, recurrence)
         notify(t().mainWindow.addedRecurring)
-      }),
+      },
     })
   }
 
@@ -191,25 +192,36 @@ function createHeaderBar({
     primary: true,
   }))
   header.packEnd(addButton)
+  const calendarIndicator = new Gtk.Button({ iconName: 'x-office-calendar-symbolic', cssClasses: ['flat'] })
+  calendarIndicator.on('clicked', () => void calendarSyncService.syncNow())
+  header.packEnd(calendarIndicator)
+  const renderCalendar = () => {
+    const status = calendarSyncService.status
+    calendarIndicator.setVisible(calendarSyncService.config.enabled)
+    calendarIndicator.setSensitive(status.state !== 'syncing')
+    calendarIndicator.setIconName(status.state === 'error' || status.state === 'offline'
+      ? 'dialog-warning-symbolic' : status.state === 'syncing' ? 'view-refresh-symbolic' : 'x-office-calendar-symbolic')
+    calendarIndicator.setTooltipText([
+      describeCalendarState(status.state), status.message,
+      status.lastSync ? formatCalendarLastSync(status.lastSync) : t().calendarGroup.neverSynced,
+      t().calendarGroup.syncButton,
+    ].filter(Boolean).join('\n'))
+  }
+  renderCalendar()
+  const unsubscribeCalendar = calendarSyncService.onStatusChange(renderCalendar)
 
   const render = () => {
-    // Nothing can be added while the server that holds the budget is silent.
-    const writable = isWritable(remoteStorage.status)
-    addButton.setSensitive(writable)
-    addButton.setTooltipText(writable
-      ? `${t().mainWindow.addTransactionTooltip} — ${formatMonth(budgetStore.selectedMonth)}`
-      : t().mainWindow.serverUnreachable)
+    addButton.setTooltipText(`${t().mainWindow.addTransactionTooltip} — ${formatMonth(budgetStore.selectedMonth)}`)
   }
 
   render()
   const unsubscribeBudget = budgetStore.onChange(render)
-  const unsubscribeRemote = remoteStorage.onStatusChange(render)
 
   return {
     widget: header,
     dispose: () => {
       unsubscribeBudget()
-      unsubscribeRemote()
+      unsubscribeCalendar()
     },
   }
 }
@@ -221,7 +233,8 @@ export function createMainWindow({
   thresholdsStore,
   recurrenceStore,
   generalSettingsStore,
-  remoteStorage,
+  bankService,
+  calendarSyncService,
 }: MainWindowDeps): MainWindow {
   const window = new Adw.ApplicationWindow({ application })
   window.setTitle(APP_NAME)
@@ -252,10 +265,10 @@ export function createMainWindow({
   const unsubscribeHistory = budgetStore.onChange(() => historyView.update(budgetStore.monthlyTotals))
 
   const header = createHeaderBar({
+    calendarSyncService,
     parent: window,
     budgetStore,
     categoryStore,
-    remoteStorage,
     notify,
     onShowBudget: showBudget,
     onShowHistory: showHistory,
@@ -270,35 +283,22 @@ export function createMainWindow({
     thresholdsStore,
     recurrenceStore,
     generalSettingsStore,
-    remoteStorage,
+    bankService,
+    calendarSyncService,
   })
-
-  // Says out loud why the budget suddenly refuses to be edited, and offers
-  // the one action that can fix it.
-  const banner = new Adw.Banner({ buttonLabel: t().mainWindow.retryButton })
-  banner.on('button-clicked', () => {
-    void remoteStorage.connect()
-  })
-  const showBanner = () => {
-    const { status } = remoteStorage
-    banner.setRevealed(!isWritable(status))
-    banner.setTitle(status.state === 'connecting'
-      ? t().remoteStatus.connecting
-      : t().mainWindow.serverUnreachable)
-  }
-  showBanner()
-  const unsubscribeBanner = remoteStorage.onStatusChange(showBanner)
 
   const content = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
   content.append(header.widget)
-  content.append(banner)
   content.append(pages)
   window.setContent(content)
+
+  window.on('notify::is-active', () => {
+    if (window.isActive) calendarSyncService.resume()
+  })
 
   return {
     window,
     dispose: () => {
-      unsubscribeBanner()
       header.dispose()
       budgetView.dispose()
       unsubscribeHistory()

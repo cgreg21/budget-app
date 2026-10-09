@@ -21,7 +21,6 @@ import {
 import type { AdwPreferencesGroup, GtkWidget } from '../gtk-types.js'
 import type { Notify } from '../types.js'
 import { createRowActionButton } from '../widgets.js'
-import { createWriteGuard } from '../write-guard.js'
 import { openConfirmDeleteDialog } from './confirm-delete-dialog.js'
 import { openRecurrenceDialog } from './recurrence-dialog.js'
 
@@ -64,17 +63,16 @@ export function createRecurrencesGroup({
   })
 
   let rows: GtkWidget[] = []
-  const guard = createWriteGuard(notify)
 
   const edit = (recurrence: Recurrence) => {
     openRecurrenceDialog(parent, {
       categories: categoryStore.categories,
       defaultMonth,
       recurrence,
-      onSubmit: (input) => guard(() => {
+      onSubmit: (input) => {
         store.update(recurrence.id, input)
         notify(strings.updated)
-      }),
+      },
     })
   }
 
@@ -104,10 +102,10 @@ export function createRecurrencesGroup({
       onClick: () => openConfirmDeleteDialog(parent, {
         name: recurrence.description || t().common.noDescription,
         body: strings.deleteBody,
-        onConfirm: () => guard(() => {
+        onConfirm: () => {
           store.remove(recurrence.id)
           notify(strings.deleted)
-        }),
+        },
       }),
     }))
 
@@ -132,10 +130,10 @@ export function createRecurrencesGroup({
       openRecurrenceDialog(parent, {
         categories: categoryStore.categories,
         defaultMonth,
-        onSubmit: (input) => guard(() => {
+        onSubmit: (input) => {
           store.add(input)
           notify(strings.added)
-        }),
+        },
       })
     },
   }))

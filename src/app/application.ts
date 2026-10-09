@@ -10,17 +10,19 @@
  */
 import GLib from 'gi:GLib-2.0'
 import Gio from 'gi:Gio-2.0'
+import GObject from 'gi:GObject-2.0'
 import Adw from 'gi:Adw-1'
 
 import { styles } from 'node-gtk/styles'
 
+import { BankKeyStore } from '../data/bank/bank-key-store.js'
+import { BankService } from '../data/bank/bank-service.js'
+import { BankStateStore } from '../data/bank/bank-state-store.js'
 import { BudgetStore } from '../data/budget-store.js'
+import { CalendarSyncService } from '../data/calendar/calendar-sync-service.js'
 import { CategoryStore } from '../data/category-store.js'
 import { RecurrenceStore } from '../data/recurrence-store.js'
 import { GeneralSettingsStore } from '../data/general-settings-store.js'
-import { setRemoteGateway } from '../data/remote/gateway.js'
-import { RemoteConfigStore } from '../data/remote/remote-config-store.js'
-import { RemoteStorage } from '../data/remote/remote-storage.js'
 import { ThresholdsStore } from '../data/thresholds-store.js'
 import { openAboutDialog } from '../ui/dialogs/about-dialog.js'
 import type { AdwApplication, AdwApplicationWindow } from '../ui/gtk-types.js'
@@ -62,17 +64,6 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
   application.on('activate', () => {
     styles.addFile(stylesheet)
 
-    const remoteConfigStore = new RemoteConfigStore()
-    const remoteStorage = new RemoteStorage({
-      configStore: remoteConfigStore,
-      // The pull rewrites the month files behind the stores' backs; only a
-      // full reload notices the months it added or removed.
-      onSynced: () => budgetStore.reload(),
-    })
-    // Installed before any store exists, so the very first write is already
-    // subject to it.
-    setRemoteGateway(remoteStorage)
-
     const recurrenceStore = new RecurrenceStore()
     const generalSettingsStore = new GeneralSettingsStore()
     setLocale(generalSettingsStore.settings.language)
@@ -82,6 +73,16 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
     const budgetStore = new BudgetStore(recurrenceStore)
     const categoryStore = new CategoryStore()
     const thresholdsStore = new ThresholdsStore()
+    const bankStateStore = new BankStateStore()
+    const bankService = new BankService({
+      state: bankStateStore,
+      keys: new BankKeyStore(),
+      categories: () => categoryStore.categories,
+      importTransactions: (transactions) => budgetStore.importTransactions(transactions),
+      openUrl: (url) => Gio.AppInfo.launchDefaultForUri(url, null),
+      language: () => generalSettingsStore.settings.language,
+    })
+    const calendarSyncService = new CalendarSyncService({ budgetStore, categoryStore })
     const mainWindow = createMainWindow({
       application,
       budgetStore,
@@ -89,22 +90,31 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
       thresholdsStore,
       recurrenceStore,
       generalSettingsStore,
-      remoteStorage,
+      bankService,
+      calendarSyncService,
     })
+
+    const networkMonitor = Gio.NetworkMonitor.getDefault()
+    const onNetworkChanged = (available: boolean) => {
+      if (available) calendarSyncService.resume()
+    }
+    // The generated NetworkMonitor interface omits its GObject signal API.
+    if (networkMonitor instanceof GObject.Object) networkMonitor.on('network-changed', onNetworkChanged)
 
     let stopped = false
     const shutdown = () => {
       if (stopped) return // the quit action and close-request can both fire
       stopped = true
       mainWindow.dispose()
+      bankService.dispose()
+      if (networkMonitor instanceof GObject.Object) networkMonitor.off('network-changed', onNetworkChanged)
+      calendarSyncService.dispose()
+      bankStateStore.dispose()
       budgetStore.dispose()
       categoryStore.dispose()
       thresholdsStore.dispose()
       recurrenceStore.dispose()
       generalSettingsStore.dispose()
-      setRemoteGateway(null)
-      remoteStorage.dispose()
-      remoteConfigStore.dispose()
       loop.quit()
       application.quit()
     }
@@ -118,11 +128,8 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
     styles.install() // flush queued styles and start the dev hot-reload watcher
     mainWindow.window.present()
 
-    // Deliberately not awaited: the window opens at once on the cached budget,
-    // and the server's version replaces it as soon as it arrives. Waiting for
-    // a network round trip before showing anything would make a slow
-    // connection look like a broken application.
-    void remoteStorage.connect()
+    bankService.start()
+    calendarSyncService.start()
 
     loop.run() // returns immediately under ESM — see the note above
   })

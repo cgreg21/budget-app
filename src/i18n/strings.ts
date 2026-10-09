@@ -36,14 +36,6 @@ export interface Strings {
     recurrenceFrom(month: string): string
     recurrenceRange(start: string, end: string, occurrences: number): string
   }
-  remoteStatus: {
-    localStorage: string
-    connecting: string
-    online: string
-    onlineSyncedAt(time: string): string
-    offline: string
-    errorDefault: string
-  }
   icons: Record<IconKey, string>
   categoriesGroup: {
     existingCategoriesTitle: string
@@ -63,25 +55,89 @@ export interface Strings {
   categoryCombo: {
     title: string
   }
-  cloudGroup: {
-    serverGroupTitle: string
-    serverGroupDescription: string
-    addressLabel: string
-    addressTooltip(hint: string): string
+  bankGroup: {
+    credentialsGroupTitle: string
+    credentialsGroupDescription: string
+    applicationIdLabel: string
+    keyLabel: string
+    keySavedSubtitle: string
+    keyMissingSubtitle: string
+    chooseKeyButton: string
+    keyFilterName: string
+    keySaved: string
+    keyringUnavailable: string
+    invalidKey: string
+    forgetButton: string
+    credentialsForgotten: string
+    connectionGroupTitle: string
+    connectionGroupDescription: string
+    searchLabel: string
+    searchButton: string
+    bankLabel: string
+    noBank: string
+    redirectUrlLabel: string
+    redirectUrlTooltip: string
+    importFromLabel: string
+    saveSettingsButton: string
+    settingsSaved: string
+    statusGroupTitle: string
+    notConnected: string
+    connectedTo(bank: string, accounts: number): string
+    validUntil(date: string): string
+    lastImport(date: string): string
+    never: string
+    renewNote: string
+    connectButton: string
+    importNowButton: string
+    disconnectButton: string
+    pasteLabel: string
+    pasteButton: string
+    disconnected: string
+    waitingForBank(listening: boolean): string
+    refused(reason: string): string
+    unexpectedReturn: string
+    noCode: string
+    invalidDate: string
+    expired: string
+    imported(count: number): string
+    missingCredentials: string
+    failed(message: string): string
+    network: string
+    rateLimit: string
+    authRefused(message: string): string
+  }
+  calendarGroup: {
+    settingsGroupTitle: string
+    settingsGroupDescription: string
+    enabledLabel: string
+    urlLabel: string
+    urlPlaceholder: string
+    authFailed: string
+    calendarNotFound: string
+    conflict: string
+    serverError(status: number): string
     usernameLabel: string
     passwordLabel: string
-    directoryLabel: string
-    useServerLabel: string
-    useServerSubtitle: string
-    statusGroupTitle: string
-    syncButton: string
-    connectButton: string
-    forgetButton: string
-    passwordKeptSubtitle: string
-    missingAddress: string
+    passwordSubtitle: string
+    passwordSavedSubtitle: string
+    saveButton: string
+    incompleteSettings: string
+    saved: string
     keyringUnavailable: string
-    noPasswordSaved: string
-    disconnected: string
+    statusGroupTitle: string
+    statusGroupDescription: string
+    stateDisabled: string
+    stateSyncing: string
+    stateOnline: string
+    stateOffline: string
+    stateError: string
+    lastSync(date: string, time: string): string
+    neverSynced: string
+    testButton: string
+    testSucceeded: string
+    testFailed(message: string): string
+    syncButton: string
+    operationFailed(message: string): string
   }
   confirmDeleteDialog: {
     heading(name: string): string
@@ -165,7 +221,8 @@ export interface Strings {
     recurrencesTab: string
     categoriesTab: string
     dataTab: string
-    cloudTab: string
+    bankTab: string
+    calendarTab: string
   }
   recurrenceDialog: {
     defaultDescription(kind: 'income' | 'expense'): string
@@ -291,8 +348,6 @@ export interface Strings {
     addTransactionTooltip: string
     added: string
     addedRecurring: string
-    retryButton: string
-    serverUnreachable: string
     historyMenu: string
     budgetMenu: string
   }

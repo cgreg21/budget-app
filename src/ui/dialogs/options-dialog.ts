@@ -1,7 +1,8 @@
 /*
  * ui/dialogs/options-dialog.ts — the window behind the "Options" menu entry,
- * split in five tabs: the balance thresholds, the recurrences, the categories,
- * the import/export of the data itself and the server holding it.
+ * split in tabs: the balance thresholds, the recurrences, the categories,
+ * the import/export of the data itself and the bank
+ * the transactions are imported from.
  *
  * Adw.PreferencesDialog draws the tab switcher itself, one tab per page, and
  * hosts its own toasts — feedback therefore stays on top of the dialog
@@ -10,19 +11,21 @@
  */
 import Adw from 'gi:Adw-1'
 
+import type { BankService } from '../../data/bank/bank-service.js'
 import type { BudgetStore } from '../../data/budget-store.js'
+import type { CalendarSyncService } from '../../data/calendar/calendar-sync-service.js'
 import type { CategoryStore } from '../../data/category-store.js'
 import type { GeneralSettingsStore } from '../../data/general-settings-store.js'
 import type { RecurrenceStore } from '../../data/recurrence-store.js'
-import type { RemoteStorage } from '../../data/remote/remote-storage.js'
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
 import type { MonthKey } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type { GtkWidget } from '../gtk-types.js'
 import type { Notify } from '../types.js'
 import { RECURRING_ICON } from '../widgets.js'
+import { createBankGroups } from './bank-group.js'
 import { createCategoriesGroups } from './categories-group.js'
-import { createCloudGroups } from './cloud-group.js'
+import { createCalendarGroups } from './calendar-group.js'
 import { createDataGroups } from './data-group.js'
 import { createGeneralGroup } from './general-group.js'
 import { createRecurrencesGroup } from './recurrences-group.js'
@@ -37,7 +40,8 @@ export interface OptionsDialogOptions {
   generalSettingsStore: GeneralSettingsStore
   thresholdsStore: ThresholdsStore
   recurrenceStore: RecurrenceStore
-  remoteStorage: RemoteStorage
+  bankService: BankService
+  calendarSyncService: CalendarSyncService
   /** Start month proposed for a new recurrence — the month on screen. */
   selectedMonth: MonthKey
 }
@@ -50,7 +54,8 @@ export function openOptionsDialog(
     generalSettingsStore,
     thresholdsStore,
     recurrenceStore,
-    remoteStorage,
+    bankService,
+    calendarSyncService,
     selectedMonth,
   }: OptionsDialogOptions,
 ): void {
@@ -107,26 +112,35 @@ export function openOptionsDialog(
   })
   for (const group of dataGroups) dataPage.add(group)
 
-  const cloud = createCloudGroups({ storage: remoteStorage, notify })
-  const cloudPage = new Adw.PreferencesPage({
-    title: t().optionsDialog.cloudTab,
-    iconName: 'network-server-symbolic',
+  const bank = createBankGroups({ service: bankService, parent: dialog, notify })
+  const bankPage = new Adw.PreferencesPage({
+    title: t().optionsDialog.bankTab,
+    iconName: 'folder-download-symbolic',
   })
-  for (const group of cloud.groups) cloudPage.add(group)
+  for (const group of bank.groups) bankPage.add(group)
+
+  const calendar = createCalendarGroups({ service: calendarSyncService, notify })
+  const calendarPage = new Adw.PreferencesPage({
+    title: t().optionsDialog.calendarTab,
+    iconName: 'x-office-calendar-symbolic',
+  })
+  for (const group of calendar.groups) calendarPage.add(group)
 
   dialog.add(generalPage)
   dialog.add(thresholdsPage)
   dialog.add(recurrencesPage)
   dialog.add(categoriesPage)
   dialog.add(dataPage)
-  dialog.add(cloudPage)
+  dialog.add(bankPage)
+  dialog.add(calendarPage)
 
   dialog.on('closed', () => {
     thresholds.dispose()
     general.dispose()
     recurrences.dispose()
     categories.dispose()
-    cloud.dispose()
+    bank.dispose()
+    calendar.dispose()
   })
 
   dialog.present(parent)

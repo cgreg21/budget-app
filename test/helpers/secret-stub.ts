@@ -1,7 +1,7 @@
 /*
  * test/helpers/secret-stub.ts — stands in for `gi:Secret-1` under Vitest.
  *
- * `data/remote/credentials.ts` loads libsecret with a dynamic `import()`, so
+ * `data/bank/secret.ts` loads libsecret with a dynamic `import()`, so
  * that a session without the typelib degrades to the environment instead of
  * crashing. Aliasing the namespace to this stub (see vitest.config.ts) lets
  * the default loader be exercised on a machine that has no keyring at all,

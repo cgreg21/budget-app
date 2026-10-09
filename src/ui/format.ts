@@ -10,11 +10,11 @@ import { getLocale, t, type Locale } from '../i18n/index.js'
 import {
   DEFAULT_GENERAL_SETTINGS,
   type GeneralSettings,
+  type CalendarState,
   type MonthKey,
   endMonth,
   type Recurrence,
   type RecurrenceFrequency,
-  type RemoteStatus,
   type TransactionKind,
 } from 'budget-lib'
 
@@ -140,33 +140,21 @@ export function formatRecurrencePeriod(recurrence: Recurrence): string {
     : t().format.recurrenceRange(formatMonth(recurrence.startMonth), formatMonth(end), recurrence.occurrences ?? 0)
 }
 
-const timeFormatters = new Map<string, Intl.DateTimeFormat>()
-const timeFormatter = () => cachedFormatter(timeFormatters, (tag) => new Intl.DateTimeFormat(tag, {
-  hour: '2-digit',
-  minute: '2-digit',
-}))
-
-/** A one-line account of where the budget stands, shown in the options dialog. */
-export function describeRemoteStatus(status: RemoteStatus): string {
-  const strings = t().remoteStatus
-  switch (status.state) {
-    case 'disabled':
-      return strings.localStorage
-    case 'connecting':
-    case 'syncing':
-      return strings.connecting
-    case 'online':
-      return status.lastSyncedAt
-        ? strings.onlineSyncedAt(formatRemoteTime(status.lastSyncedAt))
-        : strings.online
-    case 'offline':
-      return strings.offline
-    case 'error':
-      return status.message ?? strings.errorDefault
+export function describeCalendarState(state: CalendarState): string {
+  const strings = t().calendarGroup
+  switch (state) {
+    case 'disabled': return strings.stateDisabled
+    case 'syncing': return strings.stateSyncing
+    case 'online': return strings.stateOnline
+    case 'offline': return strings.stateOffline
+    case 'error': return strings.stateError
   }
 }
 
-function formatRemoteTime(isoDate: string): string {
+export function formatCalendarLastSync(isoDate: string): string {
   const date = new Date(isoDate)
-  return Number.isNaN(date.getTime()) ? isoDate : timeFormatter().format(date)
+  if (Number.isNaN(date.getTime())) return isoDate
+  const localDate = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+  const time = new Intl.DateTimeFormat(localeTag(), { hour: '2-digit', minute: '2-digit' }).format(date)
+  return t().calendarGroup.lastSync(formatDate(localDate), time)
 }

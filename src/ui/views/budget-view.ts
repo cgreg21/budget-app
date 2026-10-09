@@ -18,7 +18,6 @@ import { openTransactionDialog } from '../dialogs/transaction-dialog.js'
 import { formatDate, formatSignedAmount } from '../format.js'
 import type { GtkWidget } from '../gtk-types.js'
 import type { DisposableComponent, Notify } from '../types.js'
-import { createWriteGuard } from '../write-guard.js'
 import { RECURRING_ICON } from '../widgets.js'
 import { createCategoryCharts } from './category-charts.js'
 import { createMonthSwitcher } from './month-switcher.js'
@@ -50,7 +49,6 @@ export function createBudgetView({
 }: BudgetViewDeps): DisposableComponent {
   const summary = createSummaryCards()
   const charts = createCategoryCharts()
-  const guard = createWriteGuard(notify)
 
   const monthSwitcher = createMonthSwitcher({
     onSelectOlder: () => budgetStore.selectOlderMonth(),
@@ -62,7 +60,7 @@ export function createBudgetView({
   monthSwitcher.widget.setMarginBottom(6)
 
   /** Edit of a transaction that belongs to no series: nothing to arbitrate. */
-  const applyEdit = (id: string, input: TransactionInput, settings: RecurrenceSettings | null) => guard(() => {
+  const applyEdit = (id: string, input: TransactionInput, settings: RecurrenceSettings | null) => {
     if (settings === null) {
       budgetStore.update(id, input)
       notify(t().budgetView.edited)
@@ -70,7 +68,7 @@ export function createBudgetView({
     }
     budgetStore.updateSeries(id, input, settings)
     notify(t().budgetView.editedRecurring)
-  })
+  }
 
   const list = createTransactionList({
     recurrenceOf: (transaction) => budgetStore.recurrenceOf(transaction),
@@ -90,16 +88,16 @@ export function createBudgetView({
 
           openEditScopeDialog(parent, {
             canApplyToOccurrence: !recurrenceChanged,
-            onOccurrence: () => guard(() => {
+            onOccurrence: () => {
               budgetStore.update(transaction.id, input)
               notify(t().budgetView.occurrenceEdited)
-            }),
-            onSeries: () => guard(() => {
+            },
+            onSeries: () => {
               budgetStore.updateSeries(transaction.id, input, settings)
               notify(settings === null
                 ? t().budgetView.recurrenceRemoved
                 : t().budgetView.recurrenceUpdated)
-            }),
+            },
           })
         },
       })
@@ -117,12 +115,12 @@ export function createBudgetView({
         body: isOccurrence
           ? t().budgetView.deleteBodyOccurrence(details)
           : t().budgetView.deleteBodyOnce(details),
-        onConfirm: () => guard(() => {
+        onConfirm: () => {
           budgetStore.remove(transaction.id)
           notify(isOccurrence
             ? t().budgetView.occurrenceDeleted
             : t().budgetView.deleted)
-        }),
+        },
       })
     },
   }, () => charts.update(list.filteredTransactions()))

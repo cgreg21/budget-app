@@ -14,7 +14,6 @@ import { areThresholdsOrdered, type BalanceThresholds } from 'budget-lib'
 import { t } from '../../i18n/index.js'
 import type { AdwPreferencesGroup, AdwSpinRow } from '../gtk-types.js'
 import type { Notify } from '../types.js'
-import { createWriteGuard } from '../write-guard.js'
 
 const AMOUNT_LIMIT = 1_000_000
 const AMOUNT_STEP = 10
@@ -79,10 +78,8 @@ export function createThresholdsGroup({ store, notify }: ThresholdsGroupOptions)
       return
     }
 
-    createWriteGuard(notify)(() => {
-      store.save(next)
-      notify(strings.saved)
-    })
+    store.save(next)
+    notify(strings.saved)
   }
 
   const saveButton = new Gtk.Button({ label: strings.saveButton, cssClasses: ['suggested-action'] })

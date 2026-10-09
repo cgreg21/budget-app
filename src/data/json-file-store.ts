@@ -6,32 +6,20 @@
  *     is missing or invalid;
  *   - `commit()` replaces the state, writes it back and notifies subscribers;
  *   - it watches the file so edits made *outside* the app (another instance,
- *     a sync tool, a manual edit) are picked up live. Writes performed by the
- *     store itself are recognised and never trigger a redundant reload.
+ *     a manual edit) are picked up live. Writes performed by the store itself
+ *     are recognised and never trigger a redundant reload.
  *
  * Subclasses only describe their own data: how to validate it (`parse`), what
  * to use when there is none (`createDefault`) and, optionally, how to
  * canonicalise it (`normalize`).
- *
- * When a remote server holds the budget, these files are only its cache: a
- * commit is refused while the server is unreachable, and mirrored to it
- * otherwise. Files marked `localOnly` — the server settings themselves —
- * stay out of that and remain writable offline.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { assertRemoteWritable, pushToRemote } from './remote/gateway.js'
-
 export type StoreListener = () => void
 export type Unsubscribe = () => void
 
-export interface JsonFileStoreOptions {
-  /** Keeps the file on this machine: never mirrored, always writable. */
-  localOnly?: boolean
-}
-
-/** Editors and sync tools usually emit several filesystem events per save. */
+/** Editors usually emit several filesystem events per save. */
 const RELOAD_DEBOUNCE_MS = 150
 
 function serialize(state: unknown): string {
@@ -41,17 +29,15 @@ function serialize(state: unknown): string {
 export abstract class JsonFileStore<T> {
   readonly #filePath: string
   readonly #directory: string
-  readonly #localOnly: boolean
   readonly #listeners = new Set<StoreListener>()
   #state: T
   #lastWritten: string
   #watcher?: fs.FSWatcher
   #reloadTimer?: NodeJS.Timeout
 
-  protected constructor(filePath: string, { localOnly = false }: JsonFileStoreOptions = {}) {
+  protected constructor(filePath: string) {
     this.#filePath = filePath
     this.#directory = path.dirname(filePath)
-    this.#localOnly = localOnly
     this.#state = this.normalize(this.#loadFromDisk() ?? this.createDefault())
     this.#lastWritten = serialize(this.#state)
     this.#startWatching()
@@ -79,24 +65,13 @@ export abstract class JsonFileStore<T> {
     return this.#state
   }
 
-  /**
-   * Replace the state, persist it and notify subscribers.
-   *
-   * The write is refused outright when the budget lives on a server that
-   * cannot be reached: a cache the server never learns about would be
-   * silently overwritten on the next connection.
-   */
+  /** Replace the state, persist it locally and notify subscribers. */
   protected commit(next: T): void {
-    if (!this.#localOnly) assertRemoteWritable()
-
     this.#state = this.normalize(next)
     this.#lastWritten = serialize(this.#state)
     fs.mkdirSync(this.#directory, { recursive: true })
     fs.writeFileSync(this.#filePath, this.#lastWritten, 'utf-8')
     this.#notify()
-
-    // After the local write: the cache is up to date even if the upload fails.
-    if (!this.#localOnly) pushToRemote(this.#filePath)
   }
 
   /** Validate JSON read from disk. Return `null` to reject the file contents. */

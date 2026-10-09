@@ -5,7 +5,7 @@ import { GENERAL_SETTINGS_FILE } from './paths.js'
 
 export class GeneralSettingsStore extends JsonFileStore<GeneralSettings> {
   constructor() {
-    super(GENERAL_SETTINGS_FILE, { localOnly: true })
+    super(GENERAL_SETTINGS_FILE)
   }
 
   get settings(): GeneralSettings {

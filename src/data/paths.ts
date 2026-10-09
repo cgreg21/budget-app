@@ -6,16 +6,13 @@
  * on Windows:
  *
  *   budget-app/
+ *   ├── bank.json
  *   ├── categories.json
  *   ├── recurrences.json
- *   ├── remote.json
  *   ├── thresholds.json
  *   └── months/
  *       ├── 2026-08.json
  *       └── 2026-09.json
- *
- * When a remote server is configured, that directory becomes a cache of it
- * rather than the reference — see data/remote/remote-storage.ts.
  */
 import GLib from 'gi:GLib-2.0'
 import path from 'node:path'
@@ -38,11 +35,14 @@ export const THRESHOLDS_FILE = path.join(DATA_DIR, 'thresholds.json')
 /** Templates replayed into every month they are due in. */
 export const RECURRENCES_FILE = path.join(DATA_DIR, 'recurrences.json')
 
-/** Which server the budget is stored on, if any. Never holds the password. */
-export const REMOTE_CONFIG_FILE = path.join(DATA_DIR, 'remote.json')
+/** Calendar settings and reconciliation baseline; never contains a password. */
+export const CALENDAR_STATE_FILE = path.join(DATA_DIR, 'calendar.json')
 
 /** Local display and application preferences. */
 export const GENERAL_SETTINGS_FILE = path.join(DATA_DIR, 'general-settings.json')
+
+/** The bank connection: settings, granted access, imported ids. Stays on this machine; never holds the key. */
+export const BANK_STATE_FILE = path.join(DATA_DIR, 'bank.json')
 
 /** Single-file layout used before the per-month split; migrated on startup. */
 export const LEGACY_TRANSACTIONS_FILE = path.join(DATA_DIR, 'transactions.json')

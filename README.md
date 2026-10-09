@@ -161,13 +161,18 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │   ├── recurrence-store.ts       #   recurrences.json
 │   │   ├── backup-service.ts         #   import / export, JSON archive and CSV
 │   │   ├── category-store.ts         #   categories.json
-│   │   └── remote/                   #   the cloud: server as reference, files as cache
-│   │       ├── provider.ts           #     the provider seam (one per protocol)
-│   │       ├── webdav-provider.ts    #     WebDAV / Nextcloud over fetch
-│   │       ├── credentials.ts        #     the password: system keyring, then environment
-│   │       ├── gateway.ts            #     what the stores call before writing
-│   │       ├── remote-config-store.ts#     remote.json (local only)
-│   │       └── remote-storage.ts     #     connect, fill the cache, mirror every write
+│   │   ├── bank/                     #   the bank import (Enable Banking)
+│   │   │   ├── bank-service.ts       #     connect, import, automatic import
+│   │   │   ├── bank-state-store.ts   #     bank.json (local only)
+│   │   │   ├── bank-key-store.ts     #     the private key: system keyring, then environment
+│   │   │   ├── node-bank.ts          #     fetch transport and RS256 signature
+│   │   │   ├── secret.ts             #     optional libsecret bindings for the bank key
+│   │   │   └── redirect-listener.ts  #     catches the bank's return on localhost
+│   │   └── calendar/                 #   optional transaction sync via CalDAV
+│   │       ├── calendar-sync-service.ts # serialized runs, debounce and offline retry
+│   │       ├── calendar-state-store.ts # calendar.json: settings and baseline
+│   │       ├── calendar-password-store.ts # password in the system keyring only
+│   │       └── node-calendar.ts       # Node fetch HTTP transport
 │   ├── ui/                           # everything GTK
 │   │   ├── gtk-types.ts              #   GTK/Adw instance-type aliases
 │   │   ├── types.ts                  #   Component / Notify contracts
@@ -175,7 +180,6 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │   ├── widgets.ts                #   small widget builders shared by views
 │   │   ├── icons.ts                  #   the palette of icons offered to categories
 │   │   ├── cairo.ts                  #   hand-written typing for the Cairo context
-│   │   ├── write-guard.ts            #   turns a refused write into a toast
 │   │   ├── views/
 │   │   │   ├── budget-view.ts        #     window content, wired to the store
 │   │   │   ├── month-switcher.ts     #     ‹ Septembre 2026 › navigator + month picker
@@ -199,7 +203,7 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │       ├── recurrences-group.ts  #     "Récurrences" tab: recurring transactions
 │   │       ├── categories-group.ts   #     "Catégories" tab: category management
 │   │       ├── data-group.ts         #     "Données" tab: import / export
-│   │       ├── cloud-group.ts        #     "Cloud" tab: the remote server and its status
+│   │       ├── calendar-group.ts      # Calendar tab: CalDAV settings and status
 │   │       ├── file-dialogs.ts       #     choosing a file to read or write
 │   │       ├── import-mode-dialog.ts #     "remplacer ou fusionner ?"
 │   │       └── about-dialog.ts
@@ -210,7 +214,7 @@ The code is organised in layers, from the model outwards to the toolkit:
 ├── test/                             # Vitest suites, mirroring src/
 │   ├── helpers/                      #   a throwaway data dir, GLib and libsecret stubs
 │   ├── data/                         #   the stores, against real files in a temp dir
-│   └── ui/                           #   the pure helpers (formatting, icons, write guard)
+│   └── ui/                           #   the pure helpers (formatting, icons)
 ├── style.css          # custom CSS (hot-reloads live under `npm run dev`)
 ├── vitest.config.ts   # test setup: GI aliases, coverage thresholds
 ├── tsconfig.json
@@ -218,7 +222,7 @@ The code is organised in layers, from the model outwards to the toolkit:
 ```
 
 Dependencies only point downwards: `app` → `ui` → `data` → `budget-lib`. The model and
-its rules (transactions, months, recurrences, backup, CSV, remote paths…) come from the
+its rules (transactions, months, recurrences, backup, CSV…) come from the
 sibling package [`budget-lib`](https://github.com/cgreg21/budget-lib), shared with the mobile app. It is plain
 TypeScript and is tested in its own project.
 
@@ -241,7 +245,7 @@ Cette application permet de suivre revenus et dépenses, **mois par mois** :
 - Une série est **illimitée par défaut**, mais peut recevoir une **durée** : activer « Durée limitée » puis indiquer un **nombre d'occurrences** (1 à 600, par exemple 12 fois). La série s'arrête alors d'elle-même ; l'onglet Récurrences affiche la période complète (« Janvier 2033 → Décembre 2033 (12 fois) »). Le nombre reste modifiable à tout moment, pour allonger, raccourcir ou revenir à l'illimité.
 - À l'enregistrement d'une transaction récurrente, l'application **demande la portée** : *cette occurrence* (la récurrence reste inchangée) ou *toute la série* (le modèle suit, les mois à venir aussi). Un changement de fréquence ne peut porter que sur la série ; le jour et le mois de départ de la série sont préservés.
 - **Chaque catégorie porte une icône**, choisie dans un sélecteur de 40 icônes (maison, panier, voiture, santé, loisirs…) ouvert depuis le bouton d'icône de l'onglet Catégories. Elle apparaît partout : devant chaque ligne de transaction, dans le menu déroulant « Catégorie » des formulaires et dans la liste des options. Renommer une catégorie conserve son icône, et changer l'icône ne touche à aucune transaction.
-- Options (menu principal ☰, première entrée), en cinq onglets : **Seuils** (réglage de `x`, `y` et `z`, positifs ou négatifs, enregistrés uniquement si `x < y < z`), **Récurrences** (ajout, modification, suppression), **Catégories** (ajout, renommage, choix d'icône, suppression), **Données** (import / export) et **Cloud** (serveur WebDAV — voir *Stockage distant*).
+- Options (menu principal ☰, première entrée), en sept onglets : **Général** (préférences locales), **Seuils** (réglage de `x`, `y` et `z`, positifs ou négatifs, enregistrés uniquement si `x < y < z`), **Récurrences** (ajout, modification, suppression), **Catégories** (ajout, renommage, choix d'icône, suppression), **Données** (import / export), **Banque** (import bancaire) et **Agenda** (synchronisation CalDAV).
 - **Import / export**, depuis l'onglet Données :
   - **Sauvegarde complète** dans un fichier `.json` : catégories, seuils, récurrences et tous les mois de l'historique. À la relecture, l'application demande quoi en faire — **Fusionner** (les données actuelles sont conservées, seul ce qui manque est ajouté) ou **Remplacer** (le fichier devient la référence ; les mois qu'il ne contient pas sont supprimés). La fusion repère les doublons par leur contenu autant que par leur identifiant : réimporter deux fois la même sauvegarde n'ajoute rien la seconde fois.
   - **Export CSV** des transactions de tous les mois (`date;description;catégorie;type;montant`, décimales à la virgule, BOM UTF-8) : le fichier s'ouvre directement dans Excel ou LibreOffice.
@@ -249,22 +253,25 @@ Cette application permet de suivre revenus et dépenses, **mois par mois** :
 
 ### Stockage
 
-Les données sont écrites en JSON sous le répertoire de données utilisateur
+Le budget est conservé sur cette machine et reste modifiable sans connexion
+réseau. La synchronisation facultative CalDAV partage uniquement les transactions
+avec le calendrier choisi (voir ci-dessous). Les données sont écrites en JSON sous le répertoire de données utilisateur
 (`%LOCALAPPDATA%\budget-app\` sous Windows, `~/.local/share/budget-app/` sous Linux) :
 
 ```
 budget-app/
+├── calendar.json       # configuration CalDAV, dernier succès et référence locale
 ├── categories.json     # la liste des catégories : nom + icône
 ├── thresholds.json     # les seuils x / y / z du solde
 ├── recurrences.json    # les transactions récurrentes
-├── remote.json         # le serveur distant, s'il y en a un — jamais synchronisé
+├── bank.json           # la connexion bancaire (réglages, accès, imports) — locale
 └── months/
     ├── 2026-08.json    # un fichier par mois — l'historique
     └── 2026-09.json
 ```
 
 Chaque fichier est surveillé : s'il est modifié en dehors de l'application (autre
-instance, outil de synchronisation, édition manuelle), l'interface se recharge
+instance, édition manuelle), l'interface se recharge
 automatiquement. L'apparition d'un nouveau fichier de mois est détectée de la
 même façon.
 
@@ -288,63 +295,77 @@ proprement un fichier qui n'en est pas une. Restaurer une sauvegarde les
 réécrit d'un bloc, puis l'interface se recharge sans qu'il soit nécessaire de
 redémarrer.
 
-### Stockage distant
+### Import bancaire
 
-Le budget peut vivre sur un serveur plutôt que sur une seule machine. L'onglet
-**Cloud** des options demande une adresse WebDAV, un utilisateur, un mot de
-passe et un dossier ; « Connecter » enregistre le tout et tente aussitôt la
-connexion en disant ce qui s'est passé. Nextcloud, ownCloud et tout serveur
-WebDAV conviennent.
+L'onglet **Banque** des options importe les transactions d'un compte bancaire
+via [Enable Banking](https://enablebanking.com) (gratuit pour ses propres
+comptes). Le protocole (jeton RS256, requêtes, correspondance vers les
+catégories) vient de `budget-lib` et est partagé avec l'application mobile.
 
-**Le serveur est le budget ; les fichiers locaux n'en sont que le cache.** Cette
-règle unique remplace tout ce qu'un outil de synchronisation contient
-d'habitude : il n'y a ni file d'attente de modifications, ni résolution de
-conflits, ni arbitrage entre deux versions. Les données ne circulent que dans
-deux situations — le cache est rempli depuis le serveur à la connexion, et
-chaque écriture est répercutée vers le serveur dans la foulée.
+Préparation :
 
-Il n'y a pas de troisième situation, parce qu'**il n'y a pas de modification
-hors ligne** : dès que le serveur cesse de répondre, le budget passe en lecture
-seule. Une bannière l'annonce en haut de la fenêtre, le bouton **+** est
-désactivé, et toute tentative de modification répond par un message plutôt que
-de s'appliquer. Le cache ne peut donc jamais s'écarter de la référence. Une
-tentative de reconnexion a lieu chaque minute ; le bouton « Synchroniser » de
-l'onglet Cloud la déclenche immédiatement.
+1. Créer une application sur enablebanking.com et y lier ses comptes ;
+2. y déclarer l'adresse de retour `http://localhost:8765/bank` ;
+3. dans l'onglet, saisir l'identifiant de l'application et choisir le fichier PEM
+   de sa clé privée, puis chercher la banque, **Connecter la banque** et
+   autoriser l'accès dans le navigateur.
 
-Le dossier distant reproduit le dossier local, à l'exception près de
-`remote.json` (qui doit rester modifiable même serveur injoignable, sans quoi
-une adresse mal saisie enfermerait l'application hors de ses propres réglages) :
+Au retour, l'application attrape elle-même la redirection : elle écoute le
+temps d'une connexion sur `127.0.0.1:8765` et nulle part ailleurs. Avec une
+autre adresse de retour, il suffit de coller dans le champ prévu l'adresse (ou
+le code) où le navigateur aboutit.
 
-```
-<dossier distant>/
-├── categories.json
-├── thresholds.json
-├── recurrences.json
-└── months/
-    └── 2026-09.json
-```
+La **clé privée** n'est écrite nulle part dans les fichiers du budget : elle est
+confiée au trousseau du système (libsecret) ou, là où il est absent, lue dans
+`BUDGET_APP_BANK_PRIVATE_KEY` (le contenu PEM). `bank.json` ne garde que les
+réglages, l'accès accordé et les identifiants des transactions déjà importées :
+une transaction supprimée du budget n'est pas réimportée, et importer deux fois
+ne crée jamais de doublon. Les transactions rejoignent le mois de leur date sans
+changer le mois affiché.
 
-À la **première connexion**, un dossier distant vide est compris comme « ce
-compte n'a pas encore de budget » : le budget local y est déposé tel quel. Dans
-tous les autres cas c'est le serveur qui l'emporte, y compris pour l'absence
-d'un mois — un mois supprimé ailleurs est supprimé ici. Un fichier de réglages
-que le serveur ne connaît pas encore est en revanche envoyé plutôt qu'effacé :
-une liste de catégories ajoutée sur cette machine est une donnée, pas un écart.
+La banque demande de renouveler l'accès environ tous les 90 jours et limite les
+accès automatiques à quelques-uns par jour : l'application importe donc au
+démarrage puis toutes les 30 minutes **si le dernier import date de plus de six
+heures**. « Importer maintenant » force un import.
 
-Le **mot de passe n'est écrit nulle part dans les fichiers du budget** : il est
-confié au trousseau du système via libsecret. Le champ n'est jamais re-rempli —
-il se remplace, il ne se relit pas. Là où libsecret est absent (Windows,
-conteneur minimal, session sans trousseau), le mot de passe est lu dans
-l'environnement, au choix `BUDGET_APP_REMOTE_PASSWORD` ou
-`BUDGET_APP_WEBDAV_PASSWORD` :
+## Synchronisation avec un agenda CalDAV
 
-```sh
-BUDGET_APP_REMOTE_PASSWORD='…' npm start
-```
+Le service desktop `CalendarSyncService` se configure dans cet onglet.
+La synchronisation est désactivée par défaut. Utilisez un calendrier dédié
+accessible avec une authentification HTTP Basic (mot de passe d’application si requis).
+Exemple : `https://cloud.example.com/remote.php/dav/calendars/user/budget`.
 
-« Oublier » déconnecte le serveur, efface le mot de passe du trousseau et
-conserve l'adresse pour la fois suivante ; le budget redevient purement local
-et le cache en place fait office de budget.
+L’onglet **Agenda** des options configure l’adresse d’un calendrier CalDAV, le nom d’utilisateur et le mot de passe. Utilisez l’URL de la collection fournie par votre service (par exemple Nextcloud). **Tester la connexion** vérifie les identifiants sans enregistrer les champs ; **Enregistrer les réglages** applique les changements et **Synchroniser maintenant** lance une synchronisation immédiate. Le mot de passe n’est jamais relu dans l’interface ni écrit dans les fichiers du budget : il est conservé uniquement dans le trousseau du système. Si le trousseau est indisponible, l’application le signale et n’enregistre pas le secret.
+
+Les transactions sont synchronisées sous forme d’événements **sur la journée**, pour que le même calendrier soit exploitable sur ordinateur, mobile et web. Les identifiants et marqueurs de synchronisation restent gérés localement pour reconnaître les événements du budget et éviter les doublons. La configuration, le dernier état et la référence de synchronisation restent locaux ; une indisponibilité du réseau n’empêche pas de consulter ou modifier le budget et la synchronisation reprend quand l’application revient au premier plan. Les modèles de récurrence restent propres au budget : ils ne sont pas créés comme règles de calendrier.
+
+Le transport utilise le `fetch` global de Node (version indiquée dans `.nvmrc` :
+26.9.0), avec un délai limite de 30 secondes. Il envoie PROPFIND, REPORT, PUT
+et DELETE, conserve les erreurs HTTP comme réponses et normalise les noms
+d’en-têtes en minuscules. Le client desktop n’est pas soumis aux restrictions CORS.
+
+Les transactions de **tous les mois** sont synchronisées au démarrage, deux secondes
+après leur dernière modification (imports bancaires inclus), au retour du réseau
+et au premier plan, ou sur demande. Après une panne réseau, une nouvelle tentative
+a lieu chaque minute. Les exécutions sont sérialisées ; une modification pendant
+un transfert déclenche un nouveau passage sans écraser la saisie locale.
+Les catégories manquantes des transactions téléchargées sont créées avec leur
+icône par défaut. Les suppressions se propagent dans les deux sens ; si les deux
+côtés ont modifié le même événement, le calendrier l’emporte au prochain passage.
+
+Chaque occurrence récurrente est un événement ordinaire (pas de RRULE). Son
+marqueur `recurrenceId` est conservé pour que la réapplication d’un modèle local
+ne crée pas une seconde occurrence. Les modèles, catégories complètes, seuils,
+préférences et accès bancaires ne sont pas envoyés. Le fichier
+`calendar.json` contient la configuration **sans mot de passe**, la référence
+de synchronisation et la date du dernier succès ; ces réglages ne font pas partie
+des sauvegardes. Changer de calendrier ou d’utilisateur réinitialise la référence,
+jamais les transactions locales.
+
+Le stockage du mot de passe exige un trousseau accessible via `gi:Secret-1`
+(libsecret). Sur Windows ou une installation sans ce typelib, le test avec
+un mot de passe saisi reste possible, mais la synchronisation persistante ne
+peut pas être activée : il n’y a aucun repli vers un fichier ou l’environnement.
 
 ## Tests
 

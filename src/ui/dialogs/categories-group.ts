@@ -19,7 +19,6 @@ import type { AdwEntryRow, AdwPreferencesGroup, GtkButton, GtkImage, GtkWidget }
 import { iconLabel, setCategoryIcon } from '../icons.js'
 import type { Notify } from '../types.js'
 import { createRowActionButton } from '../widgets.js'
-import { createWriteGuard } from '../write-guard.js'
 import { openConfirmDeleteDialog } from './confirm-delete-dialog.js'
 import { openIconPickerDialog } from './icon-picker-dialog.js'
 
@@ -85,18 +84,16 @@ function createAddGroup(
     const name = entry.text.trim()
     if (!name) return
 
-    createWriteGuard(notify)(() => {
-      if (!store.add(name, icon)) {
-        notify(strings.alreadyExists(name))
-        return
-      }
+    if (!store.add(name, icon)) {
+      notify(strings.alreadyExists(name))
+      return
+    }
 
-      entry.text = ''
-      icon = DEFAULT_CATEGORY_ICON
-      setCategoryIcon(iconButton.getChild() as GtkImage, icon)
-      iconButton.setTooltipText(iconTooltip(icon))
-      notify(strings.added)
-    })
+    entry.text = ''
+    icon = DEFAULT_CATEGORY_ICON
+    setCategoryIcon(iconButton.getChild() as GtkImage, icon)
+    iconButton.setTooltipText(iconTooltip(icon))
+    notify(strings.added)
   }
 
   entry.addSuffix(createRowActionButton({
@@ -118,13 +115,12 @@ function createCategoryRow(
 ): AdwEntryRow {
   const strings = t().categoriesGroup
   const row = new Adw.EntryRow({ title: strings.nameFieldTitle, text: name, showApplyButton: true })
-  const guard = createWriteGuard(notify)
 
-  row.addPrefix(createIconButton(icon, parent, (next) => guard(() => {
+  row.addPrefix(createIconButton(icon, parent, (next) => {
     if (store.setIcon(name, next)) notify(strings.iconChanged)
-  })))
+  }))
 
-  row.on('apply', () => guard(() => {
+  row.on('apply', () => {
     const newName = row.text.trim()
     if (newName === name) return
     if (!newName || !store.rename(name, newName)) {
@@ -133,7 +129,7 @@ function createCategoryRow(
       return
     }
     notify(strings.renamed)
-  }))
+  })
 
   row.addSuffix(createRowActionButton({
     iconName: 'user-trash-symbolic',
@@ -149,10 +145,10 @@ function createCategoryRow(
       openConfirmDeleteDialog(parent, {
         name,
         body: strings.deleteBody,
-        onConfirm: () => guard(() => {
+        onConfirm: () => {
           if (store.remove(name)) notify(strings.deleted)
           else notify(strings.mustKeepOne)
-        }),
+        },
       })
     },
   }))

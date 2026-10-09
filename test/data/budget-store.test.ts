@@ -75,6 +75,37 @@ afterEach(() => {
   removeTempUserDataDir(temp)
 })
 
+describe('local-only storage', () => {
+  it('ignores legacy server settings and persists edits without network access', () => {
+    const configFile = path.join(temp.dataDir, 'remote.json')
+    const legacyConfig = {
+      enabled: true,
+      provider: 'webdav',
+      baseUrl: 'https://storage.example.invalid',
+      username: 'user',
+      remoteDir: 'budget',
+    }
+    writeJson(configFile, legacyConfig)
+    writeJson(monthFile('2026-09'), [{ id: 'existing', ...input() }])
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('No network'))
+    const readFile = vi.spyOn(fs, 'readFileSync')
+    const { budget } = openBudget()
+
+    expect(budget.transactions).toHaveLength(1)
+    budget.add(input({ description: 'Local edit' }))
+    const added = budget.transactions.find((transaction) => transaction.description === 'Local edit')!
+    budget.update(added.id, input({ description: 'Updated locally', amount: 99 }))
+    budget.remove('existing')
+    budget.reload()
+
+    expect(budget.transactions).toEqual([{ id: added.id, ...input({ description: 'Updated locally', amount: 99 }) }])
+    expect(JSON.parse(fs.readFileSync(monthFile('2026-09'), 'utf-8'))).toEqual(budget.transactions)
+    expect(readFile.mock.calls.some(([file]) => file === configFile)).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(JSON.parse(fs.readFileSync(configFile, 'utf-8'))).toEqual(legacyConfig)
+  })
+})
+
 describe('navigation', () => {
   it('starts on the current month', () => {
     const recurrences = track(new RecurrenceStore())
@@ -214,6 +245,39 @@ describe('transactions', () => {
     budget.add(input({ date: '2026-11-10' }))
 
     expect(budget.monthsWithData).toEqual(['2026-11', '2026-09'])
+  })
+
+  describe('importTransactions', () => {
+    const imported = (id: string, date: string): Transaction => ({ id, ...input({ date }) })
+
+    it('files each transaction under its month without changing the month on screen', () => {
+      const { budget } = openBudget()
+
+      const added = budget.importTransactions([imported('a', '2026-08-30'), imported('b', '2026-09-02')])
+
+      expect(added).toBe(2)
+      expect(budget.selectedMonth).toBe('2026-09')
+      expect(budget.transactions.map(({ id }) => id)).toEqual(['b'])
+      expect(budget.monthsWithData).toEqual(['2026-09', '2026-08'])
+    })
+
+    it('keeps the ids and skips the ones already present', () => {
+      const { budget } = openBudget()
+      budget.importTransactions([imported('a', '2026-09-02')])
+
+      const added = budget.importTransactions([imported('a', '2026-09-02'), imported('b', '2026-09-03')])
+
+      expect(added).toBe(1)
+      expect(budget.transactions.map(({ id }) => id).sort()).toEqual(['a', 'b'])
+      expect(budget.importTransactions([imported('a', '2026-09-02')])).toBe(0)
+    })
+
+    it('does nothing for an empty list', () => {
+      const { budget } = openBudget()
+
+      expect(budget.importTransactions([])).toBe(0)
+      expect(budget.monthsWithData).toEqual([])
+    })
   })
 })
 

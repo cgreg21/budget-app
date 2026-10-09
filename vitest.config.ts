@@ -43,12 +43,8 @@ export default defineConfig({
         // (the one piece of actual behaviour) is covered in full instead.
         'src/i18n/strings.ts',
       ],
-      // Statements, lines and functions are covered in full. The ten branches
-      // left out are unreachable defensive fallbacks: `row[0] ?? ''` and
-      // friends in the former domain/csv.ts, the same pattern in remote-storage.ts, and
-      // the empty-name check in webdav-provider.ts. They are kept because
-      // TypeScript types an index access as possibly undefined even where an
-      // earlier length check rules it out.
+      // Statements, lines and functions are covered in full; defensive
+      // fallbacks account for the remaining branches.
       thresholds: {
         statements: 100,
         branches: 98,

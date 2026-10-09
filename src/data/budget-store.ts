@@ -37,16 +37,17 @@ import {
 import { createId } from './id.js'
 import type { StoreListener, Unsubscribe } from './json-file-store.js'
 import { migrateLegacyTransactions } from './legacy-migration.js'
-import { listStoredMonths, MonthStore, readMonthTransactions } from './month-store.js'
+import { listStoredMonths, MonthStore, readMonthTransactions, writeMonthTransactions } from './month-store.js'
 import { MONTHS_DIR, monthFromFileName } from './paths.js'
 import type { RecurrenceStore } from './recurrence-store.js'
 
-/** A month file may be created or removed by another instance or a sync tool. */
+/** A month file may be created or removed by another instance or a manual edit. */
 const REFRESH_DEBOUNCE_MS = 150
 
 export class BudgetStore {
   readonly #monthStores = new Map<MonthKey, MonthStore>()
   readonly #listeners = new Set<StoreListener>()
+  readonly #transactionListeners = new Set<StoreListener>()
   readonly #recurrences: RecurrenceStore
   readonly #unsubscribeRecurrences: Unsubscribe
   #monthsWithData: readonly MonthKey[] = []
@@ -93,6 +94,11 @@ export class BudgetStore {
 
   get transactions(): readonly Transaction[] {
     return this.#monthStore(this.#selectedMonth).transactions
+  }
+
+  /** All persisted transactions, including months not opened in this session. */
+  get allTransactions(): Transaction[] {
+    return listStoredMonths().flatMap(readMonthTransactions)
   }
 
   get totals(): Totals {
@@ -154,6 +160,23 @@ export class BudgetStore {
     return this.#recurrences.find(transaction.recurrenceId)
   }
 
+  /**
+   * Files transactions that already have an id — a bank import — under the
+   * month of their date, without changing the month on screen. Ids already
+   * present are skipped; returns how many were added.
+   */
+  importTransactions(transactions: readonly Transaction[]): number {
+    const byMonth = new Map<MonthKey, Transaction[]>()
+    for (const transaction of transactions) {
+      const month = monthKeyOf(transaction.date)
+      byMonth.set(month, [...(byMonth.get(month) ?? []), transaction])
+    }
+
+    let added = 0
+    for (const [month, group] of byMonth) added += this.#monthStore(month).importMany(group)
+    return added
+  }
+
   update(id: string, input: TransactionInput): void {
     this.#monthStore(this.#selectedMonth).update(id, input)
   }
@@ -204,12 +227,42 @@ export class BudgetStore {
    * including the disappearance of the ones a full restore removed, which a
    * file watcher alone cannot report.
    */
-  reload(): void {
+  reload(applyRecurrences = true): void {
     for (const store of this.#monthStores.values()) store.dispose()
     this.#monthStores.clear()
     this.#refreshMonthsWithData()
-    this.#applyRecurrences()
+    if (applyRecurrences) this.#applyRecurrences()
     this.#notify()
+    this.#notifyTransactions()
+  }
+
+  /** Applies calendar changes across months without recreating deleted occurrences. */
+  applyCalendarChanges(upserts: readonly Transaction[], removed: readonly string[]): void {
+    if (upserts.length === 0 && removed.length === 0) return
+    const replaced = new Set([...removed, ...upserts.map((transaction) => transaction.id)])
+    const byMonth = new Map<MonthKey, Transaction[]>()
+    const touched = new Set<MonthKey>()
+    for (const month of listStoredMonths()) {
+      const current = readMonthTransactions(month)
+      const kept = current.filter((transaction) => !replaced.has(transaction.id))
+      byMonth.set(month, kept)
+      if (kept.length !== current.length) touched.add(month)
+    }
+    for (const transaction of upserts) {
+      const month = monthKeyOf(transaction.date)
+      const group = byMonth.get(month) ?? []
+      group.push(transaction)
+      byMonth.set(month, group)
+      touched.add(month)
+    }
+    for (const month of touched) writeMonthTransactions(month, byMonth.get(month) ?? [])
+    this.reload(false)
+  }
+
+  /** Transaction changes only, including bank imports into non-selected months. */
+  onTransactionsChange(listener: StoreListener): Unsubscribe {
+    this.#transactionListeners.add(listener)
+    return () => { this.#transactionListeners.delete(listener) }
   }
 
   /** Subscribe to data changes *and* to month navigation. */
@@ -229,6 +282,7 @@ export class BudgetStore {
     for (const store of this.#monthStores.values()) store.dispose()
     this.#monthStores.clear()
     this.#listeners.clear()
+    this.#transactionListeners.clear()
   }
 
   /** Month stores are created on demand and cached, so navigation stays instant. */
@@ -270,6 +324,7 @@ export class BudgetStore {
     // A write may have created a brand-new month file.
     const monthsChanged = this.#refreshMonthsWithData()
     if (monthsChanged || month === this.#selectedMonth) this.#notify()
+    this.#notifyTransactions()
   }
 
   /** Returns true when the list actually changed. */
@@ -292,12 +347,17 @@ export class BudgetStore {
         if (this.#refreshTimer) clearTimeout(this.#refreshTimer)
         this.#refreshTimer = setTimeout(() => {
           if (this.#refreshMonthsWithData()) this.#notify()
+          this.#notifyTransactions()
         }, REFRESH_DEBOUNCE_MS)
       })
     } catch {
       // Watching isn't available here: months added from outside simply won't
       // appear until the next launch.
     }
+  }
+
+  #notifyTransactions(): void {
+    for (const listener of [...this.#transactionListeners]) listener()
   }
 
   #notify(): void {

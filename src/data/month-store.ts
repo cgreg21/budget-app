@@ -22,7 +22,6 @@ import {
 import { createId } from './id.js'
 import { JsonFileStore } from './json-file-store.js'
 import { MONTHS_DIR, monthFilePath, monthFromFileName } from './paths.js'
-import { assertRemoteWritable, pushToRemote, removeFromRemote } from './remote/gateway.js'
 
 /** Months that already have a file on disk, most recent first. */
 export function listStoredMonths(): MonthKey[] {
@@ -52,27 +51,21 @@ export function readMonthTransactions(month: MonthKey): Transaction[] {
 /**
  * Overwrites a month file. An open `MonthStore` sees the change through its
  * watcher, so callers only have to refresh what they hold themselves.
- *
- * Like every other write, refused while the remote budget is unreachable.
  */
 export function writeMonthTransactions(month: MonthKey, transactions: readonly Transaction[]): void {
-  assertRemoteWritable()
   const filePath = monthFilePath(month)
   fs.mkdirSync(MONTHS_DIR, { recursive: true })
   fs.writeFileSync(filePath, JSON.stringify(sortByDateDesc(transactions), null, 2), 'utf-8')
-  pushToRemote(filePath)
 }
 
 /** Removes a month from the history. Silent when the file is already gone. */
 export function deleteMonthFile(month: MonthKey): void {
-  assertRemoteWritable()
   const filePath = monthFilePath(month)
   try {
     fs.rmSync(filePath)
   } catch {
     // never created, or already removed
   }
-  removeFromRemote(filePath)
 }
 
 export class MonthStore extends JsonFileStore<Transaction[]> {
@@ -95,6 +88,19 @@ export class MonthStore extends JsonFileStore<Transaction[]> {
   addMany(inputs: readonly TransactionInput[]): void {
     if (inputs.length === 0) return
     this.commit([...this.state, ...inputs.map((input) => ({ id: createId(), ...input }))])
+  }
+
+  /**
+   * Adds transactions that already have an id — those of a bank import — in a
+   * single write, skipping the ones this month already holds. Returns how many
+   * were added.
+   */
+  importMany(transactions: readonly Transaction[]): number {
+    const known = new Set(this.state.map((transaction) => transaction.id))
+    const fresh = transactions.filter((transaction) => !known.has(transaction.id))
+    if (fresh.length === 0) return 0
+    this.commit([...this.state, ...fresh])
+    return fresh.length
   }
 
   /** Replace an existing transaction's fields, keeping its id. No-op if the id is unknown. */

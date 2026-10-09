@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import type { Recurrence } from 'budget-lib'
 import {
-  describeRemoteStatus,
+  describeCalendarState,
+  formatCalendarLastSync,
   formatAmount,
   formatDate,
   formatFrequency,
@@ -127,43 +128,18 @@ describe('formatRecurrencePeriod', () => {
   })
 })
 
-describe('describeRemoteStatus', () => {
-  it('names the local case', () => {
-    expect(describeRemoteStatus({ state: 'disabled' })).toBe('Stockage local — aucun serveur configuré')
+describe('calendar status formatting', () => {
+  it('describes every calendar state in French', () => {
+    expect(describeCalendarState('disabled')).toMatch(/sactiv/)
+    expect(describeCalendarState('syncing')).toMatch(/cours/)
+    expect(describeCalendarState('online')).toMatch(/disponible/)
+    expect(describeCalendarState('offline')).toMatch(/inaccessible/)
+    expect(describeCalendarState('error')).toMatch(/Erreur/)
   })
 
-  it('names the transient case', () => {
-    expect(describeRemoteStatus({ state: 'connecting' })).toBe('Connexion au serveur…')
-  })
-
-  it('reports the read-only case', () => {
-    expect(describeRemoteStatus({ state: 'offline' })).toBe('Hors ligne — budget en lecture seule')
-  })
-
-  it('repeats the server message when there is one', () => {
-    expect(describeRemoteStatus({ state: 'error', message: 'identifiants refusés' }))
-      .toBe('identifiants refusés')
-  })
-
-  it('falls back to a generic message when the error has none', () => {
-    expect(describeRemoteStatus({ state: 'error' })).toBe('Erreur de connexion')
-  })
-
-  it('mentions the last synchronisation when one happened', () => {
-    const described = describeRemoteStatus({
-      state: 'online',
-      lastSyncedAt: '2026-09-18T08:30:00.000Z',
-    })
-    expect(described).toMatch(/^Connecté — dernière synchronisation à \d{2}:\d{2}$/)
-  })
-
-  it('stays terse before the first synchronisation', () => {
-    expect(describeRemoteStatus({ state: 'online' })).toBe('Connecté')
-  })
-
-  it('shows an unparsable timestamp as it came', () => {
-    expect(describeRemoteStatus({ state: 'online', lastSyncedAt: 'plus tard' }))
-      .toBe('Connecté — dernière synchronisation à plus tard')
+  it('formats a successful sync timestamp and tolerates an invalid one', () => {
+    expect(formatCalendarLastSync('2026-10-09T12:30:00')).toContain('09/10/2026')
+    expect(formatCalendarLastSync('invalid')).toBe('invalid')
   })
 })
 
@@ -188,6 +164,13 @@ describe('in English (BUDGET_APP_LOCALE=en)', () => {
     })
   })
 
+  it('translates calendar status and sync time', () => {
+    withEnglish(() => {
+      expect(describeCalendarState('offline')).toBe('Calendar unavailable')
+      expect(formatCalendarLastSync('2026-10-09T12:30:00Z')).toMatch(/^Last successful sync:/)
+    })
+  })
+
   it('translates the recurrence period', () => {
     withEnglish(() => {
       const series: Recurrence = {
@@ -201,12 +184,6 @@ describe('in English (BUDGET_APP_LOCALE=en)', () => {
         startMonth: '2026-09',
       }
       expect(formatRecurrencePeriod(series)).toBe('starting September 2026')
-    })
-  })
-
-  it('translates the remote status', () => {
-    withEnglish(() => {
-      expect(describeRemoteStatus({ state: 'disabled' })).toBe('Local storage — no server configured')
     })
   })
 })
