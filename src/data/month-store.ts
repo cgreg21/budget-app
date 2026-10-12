@@ -19,6 +19,7 @@ import {
   type Transaction,
   type TransactionInput,
 } from 'budget-lib'
+import { writeFileAtomic } from './atomic-write.js'
 import { createId } from './id.js'
 import { JsonFileStore } from './json-file-store.js'
 import { MONTHS_DIR, monthFilePath, monthFromFileName } from './paths.js'
@@ -53,9 +54,7 @@ export function readMonthTransactions(month: MonthKey): Transaction[] {
  * watcher, so callers only have to refresh what they hold themselves.
  */
 export function writeMonthTransactions(month: MonthKey, transactions: readonly Transaction[]): void {
-  const filePath = monthFilePath(month)
-  fs.mkdirSync(MONTHS_DIR, { recursive: true })
-  fs.writeFileSync(filePath, JSON.stringify(sortByDateDesc(transactions), null, 2), 'utf-8')
+  writeFileAtomic(monthFilePath(month), JSON.stringify(sortByDateDesc(transactions), null, 2))
 }
 
 /** Removes a month from the history. Silent when the file is already gone. */

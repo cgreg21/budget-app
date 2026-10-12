@@ -16,6 +16,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { writeFileAtomic } from './atomic-write.js'
+
 export type StoreListener = () => void
 export type Unsubscribe = () => void
 
@@ -69,8 +71,7 @@ export abstract class JsonFileStore<T> {
   protected commit(next: T): void {
     this.#state = this.normalize(next)
     this.#lastWritten = serialize(this.#state)
-    fs.mkdirSync(this.#directory, { recursive: true })
-    fs.writeFileSync(this.#filePath, this.#lastWritten, 'utf-8')
+    writeFileAtomic(this.#filePath, this.#lastWritten)
     this.#notify()
   }
 
