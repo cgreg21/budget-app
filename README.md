@@ -161,6 +161,7 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │   ├── recurrence-store.ts       #   recurrences.json
 │   │   ├── backup-service.ts         #   import / export, JSON archive and CSV
 │   │   ├── category-store.ts         #   categories.json
+│   │   ├── secure-store.ts           #   secrets: keyring → macOS Keychain → DPAPI → encrypted file
 │   │   ├── bank/                     #   the bank import (Enable Banking)
 │   │   │   ├── bank-service.ts       #     connect, import, automatic import
 │   │   │   ├── bank-state-store.ts   #     bank.json (local only)
@@ -171,7 +172,7 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │   └── calendar/                 #   optional transaction sync via CalDAV
 │   │       ├── calendar-sync-service.ts # serialized runs, debounce and offline retry
 │   │       ├── calendar-state-store.ts # calendar.json: settings and baseline
-│   │       ├── calendar-password-store.ts # password in the system keyring only
+│   │       ├── calendar-password-store.ts # password in the secure store, never in files in clear
 │   │       └── node-calendar.ts       # Node fetch HTTP transport
 │   ├── ui/                           # everything GTK
 │   │   ├── gtk-types.ts              #   GTK/Adw instance-type aliases
@@ -335,7 +336,7 @@ La synchronisation est désactivée par défaut. Utilisez un calendrier dédié
 accessible avec une authentification HTTP Basic (mot de passe d’application si requis).
 Exemple : `https://cloud.example.com/remote.php/dav/calendars/user/budget`.
 
-L’onglet **Agenda** des options configure l’adresse d’un calendrier CalDAV, le nom d’utilisateur et le mot de passe. Utilisez l’URL de la collection fournie par votre service (par exemple Nextcloud). **Tester la connexion** vérifie les identifiants sans enregistrer les champs ; **Enregistrer les réglages** applique les changements et **Synchroniser maintenant** lance une synchronisation immédiate. Le mot de passe n’est jamais relu dans l’interface ni écrit dans les fichiers du budget : il est conservé uniquement dans le trousseau du système. Si le trousseau est indisponible, l’application le signale et n’enregistre pas le secret.
+L’onglet **Agenda** des options configure l’adresse d’un calendrier CalDAV, le nom d’utilisateur et le mot de passe. Utilisez l’URL de la collection fournie par votre service (par exemple Nextcloud). **Tester la connexion** vérifie les identifiants sans enregistrer les champs ; **Enregistrer les réglages** applique les changements et **Synchroniser maintenant** lance une synchronisation immédiate. Le mot de passe n’est jamais relu dans l’interface ni écrit dans les fichiers du budget : il est conservé dans le trousseau du système ou, à défaut, chiffré sur cet ordinateur (voir plus bas). Si aucun stockage sûr n’est possible, l’application le signale et n’enregistre pas le secret.
 
 Les transactions sont synchronisées sous forme d’événements **sur la journée**, pour que le même calendrier soit exploitable sur ordinateur, mobile et web. Les identifiants et marqueurs de synchronisation restent gérés localement pour reconnaître les événements du budget et éviter les doublons. La configuration, le dernier état et la référence de synchronisation restent locaux ; une indisponibilité du réseau n’empêche pas de consulter ou modifier le budget et la synchronisation reprend quand l’application revient au premier plan. Les modèles de récurrence restent propres au budget : ils ne sont pas créés comme règles de calendrier.
 
@@ -362,10 +363,19 @@ de synchronisation et la date du dernier succès ; ces réglages ne font pas par
 des sauvegardes. Changer de calendrier ou d’utilisateur réinitialise la référence,
 jamais les transactions locales.
 
-Le stockage du mot de passe exige un trousseau accessible via `gi:Secret-1`
-(libsecret). Sur Windows ou une installation sans ce typelib, le test avec
-un mot de passe saisi reste possible, mais la synchronisation persistante ne
-peut pas être activée : il n’y a aucun repli vers un fichier ou l’environnement.
+Le mot de passe est conservé de façon permanente par le premier stockage sûr
+disponible (`src/data/secure-store.ts`), dans cet ordre :
+
+1. le trousseau du système via `gi:Secret-1` (libsecret : GNOME Keyring, KWallet…) ;
+2. le trousseau macOS, via l’outil `security` ;
+3. la protection des données Windows (DPAPI, via PowerShell), liée au compte
+   Windows courant ; le chiffré est rangé dans `secrets.json` ;
+4. à défaut, un chiffrement AES-256-GCM dans `secrets.json` avec une clé
+   aléatoire conservée dans `secrets.key`, lisible uniquement par l’utilisateur.
+
+L’onglet Agenda indique lequel est utilisé. Aucun de ces fichiers ne fait partie
+des sauvegardes et le mot de passe n’est jamais écrit en clair ni lu dans
+l’environnement.
 
 ## Tests
 

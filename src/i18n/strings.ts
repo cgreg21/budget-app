@@ -10,6 +10,7 @@
  * `t()` returns the dictionary for the language the app currently runs in —
  * call sites read `t().categoriesGroup.added`, they never handle a key path.
  */
+import type { SecureStoreBackendName } from '../data/secure-store.js'
 import { getLocale } from './locale.js'
 
 export interface Strings {
@@ -120,6 +121,8 @@ export interface Strings {
     passwordLabel: string
     passwordSubtitle: string
     passwordSavedSubtitle: string
+    /** One sentence per secure-store backend, appended to the password subtitle. */
+    passwordStorage: Record<SecureStoreBackendName, string>
     saveButton: string
     incompleteSettings: string
     saved: string

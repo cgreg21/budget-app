@@ -64,14 +64,22 @@ describe('calendar secure password storage', () => {
     await expect(store.save(extra, 'new-password')).resolves.toBe(true)
     expect(secret.passwordStoreSync).toHaveBeenCalledWith('calendar-schema', { calendar: config.calendarUrl, username: config.username }, 'default', 'Budget - CalDAV', 'new-password', null)
   })
-  it('does not fall back to files or environment when the keyring is unavailable', async () => {
+  it('falls back to an encrypted file in the data directory when the keyring is unavailable', async () => {
     const { CalendarPasswordStore } = await import('../../../src/data/calendar/calendar-password-store.js')
+    const { EncryptedFileBackend, KeyringBackend, SecureStore } = await import('../../../src/data/secure-store.js')
     const loader = vi.fn(async () => { throw new Error('Missing typelib') })
-    const store = new CalendarPasswordStore(loader)
+    const chain = () => new SecureStore([new KeyringBackend(loader), new EncryptedFileBackend()])
+    const store = new CalendarPasswordStore(loader, chain())
     await expect(store.load(config)).resolves.toBe('')
-    await expect(store.save(config, 'password')).resolves.toBe(false)
+    await expect(store.save(config, 'password')).resolves.toBe(true)
     expect(loader).toHaveBeenCalledTimes(1)
     expect(fs.existsSync(path.join(temp.dataDir, 'calendar.json'))).toBe(false)
+    for (const file of ['secrets.json', 'secrets.key']) {
+      expect(fs.readFileSync(path.join(temp.dataDir, file), 'utf8')).not.toContain('password')
+    }
+    const again = new CalendarPasswordStore(loader, chain())
+    await expect(again.load(config)).resolves.toBe('password')
+    await expect(again.backendName()).resolves.toBe('encrypted-file')
   })
   it('propagates keyring access failures rather than claiming a password was saved', async () => {
     const { CalendarPasswordStore } = await import('../../../src/data/calendar/calendar-password-store.js')

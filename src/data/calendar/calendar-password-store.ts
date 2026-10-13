@@ -1,39 +1,35 @@
 import { normalizeCalendarConfig, type CalendarConfig } from 'budget-lib'
-import { loadSecretNamespace, type SecretLoader, type SecretNamespace } from '../bank/secret.js'
+import { loadSecretNamespace, type SecretLoader } from '../bank/secret.js'
+import { defaultBackends, SecureStore, type SecureStoreBackendName } from '../secure-store.js'
 
-/** Calendar passwords have their own keyring schema, separate from bank keys. */
+const CALENDAR_SCHEMA = 'org.gtk.budget-app.Calendar'
+
+/** Calendar passwords have their own schema, separate from bank keys, in whichever secure store the machine offers. */
 export class CalendarPasswordStore {
-  #secret?: Promise<SecretNamespace | null>
+  private readonly store: SecureStore
 
-  constructor(private readonly loadSecret: SecretLoader = loadSecretNamespace) {}
-
-  async load(config: CalendarConfig): Promise<string> {
-    const secret = await this.namespace()
-    return secret?.passwordLookupSync?.(this.schema(secret), this.attributes(config), null) ?? ''
+  constructor(loadSecret: SecretLoader = loadSecretNamespace, store?: SecureStore) {
+    this.store = store ?? new SecureStore(defaultBackends(loadSecret))
   }
 
-  async save(config: CalendarConfig, password: string): Promise<boolean> {
-    const secret = await this.namespace()
-    if (!secret?.passwordStoreSync) return false
-    return secret.passwordStoreSync(
-      this.schema(secret), this.attributes(config), secret.COLLECTION_DEFAULT,
-      'Budget - CalDAV', password, null,
-    )
+  /** How passwords are kept on this machine, or `null` when they cannot be. */
+  backendName(): Promise<SecureStoreBackendName | null> {
+    return this.store.backendName()
   }
 
-  private namespace(): Promise<SecretNamespace | null> {
-    this.#secret ??= this.loadSecret().then((secret) => secret, () => null)
-    return this.#secret
+  load(config: CalendarConfig): Promise<string> {
+    return this.store.load(this.account(config))
   }
 
-  private schema(secret: SecretNamespace): unknown {
-    return secret.Schema.new('org.gtk.budget-app.Calendar', secret.SchemaFlags.NONE, {
-      calendar: secret.SchemaAttributeType.STRING, username: secret.SchemaAttributeType.STRING,
-    })
+  save(config: CalendarConfig, password: string): Promise<boolean> {
+    return this.store.save(this.account(config), password)
   }
 
-  private attributes(config: CalendarConfig): Record<string, string> {
+  private account(config: CalendarConfig) {
     const normalized = normalizeCalendarConfig(config)
-    return { calendar: normalized.calendarUrl, username: normalized.username }
+    return {
+      schema: CALENDAR_SCHEMA, label: 'Budget - CalDAV',
+      attributes: { calendar: normalized.calendarUrl, username: normalized.username },
+    }
   }
 }

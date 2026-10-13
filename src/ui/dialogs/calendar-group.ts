@@ -74,8 +74,9 @@ export function createCalendarGroups({ service, notify }: CalendarGroupOptions):
   })
 
   const refreshPassword = async (forConfig: CalendarConfig = readConfig()) => {
-    const hasPassword = await service.hasPassword(forConfig)
-    passwordNote.setSubtitle(hasPassword ? strings.passwordSavedSubtitle : strings.passwordSubtitle)
+    const [hasPassword, storage] = await Promise.all([service.hasPassword(forConfig), service.passwordStorage()])
+    const subtitle = hasPassword ? strings.passwordSavedSubtitle : strings.passwordSubtitle
+    passwordNote.setSubtitle(storage === null ? subtitle : `${subtitle} ${strings.passwordStorage[storage]}`)
   }
 
   let testing = false

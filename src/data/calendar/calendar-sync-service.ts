@@ -6,6 +6,7 @@ import {
 import type { BudgetStore } from '../budget-store.js'
 import type { CategoryStore } from '../category-store.js'
 import type { StoreListener, Unsubscribe } from '../json-file-store.js'
+import type { SecureStoreBackendName } from '../secure-store.js'
 import { t } from '../../i18n/index.js'
 import { CalendarPasswordStore } from './calendar-password-store.js'
 import { CalendarStateStore } from './calendar-state-store.js'
@@ -114,6 +115,11 @@ export class CalendarSyncService {
 
   async hasPassword(config: CalendarConfig): Promise<boolean> {
     return (await this.#passwords.load(config)) !== ''
+  }
+
+  /** How the password is kept on this machine, or `null` when it cannot be. */
+  passwordStorage(): Promise<SecureStoreBackendName | null> {
+    return this.#passwords.backendName()
   }
 
   async checkConnection(config: CalendarConfig, password?: string): Promise<void> {

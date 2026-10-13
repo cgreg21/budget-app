@@ -9,6 +9,8 @@
  *   ├── bank.json
  *   ├── categories.json
  *   ├── recurrences.json
+ *   ├── secrets.json          (encrypted secrets, see secure-store.ts)
+ *   ├── secrets.key           (key of the encrypted-file backend, user-only)
  *   ├── thresholds.json
  *   └── months/
  *       ├── 2026-08.json
