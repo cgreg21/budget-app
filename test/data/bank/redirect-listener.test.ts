@@ -4,9 +4,13 @@
  */
 import http from 'node:http'
 import net from 'node:net'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { listenForBankRedirect, loopbackTarget } from '../../../src/data/bank/redirect-listener.js'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function freePort(): Promise<number> {
   return new Promise((resolve) => {
@@ -84,6 +88,47 @@ describe('listenForBankRedirect', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 100))
 
+    await expect(get(port, '/bank')).rejects.toThrow()
+  })
+
+  it('treats a request without a URL as the root path', async () => {
+    const createServer = http.createServer.bind(http)
+    let handler: http.RequestListener | undefined
+    vi.spyOn(http, 'createServer').mockImplementation(((listener: http.RequestListener) => {
+      handler = listener
+      return createServer(listener)
+    }) as typeof http.createServer)
+    const port = await freePort()
+    const urls: string[] = []
+    const listener = await listenForBankRedirect(`http://localhost:${port}/bank`, (url) => urls.push(url))
+
+    const response = { writeHead: vi.fn(), end: vi.fn() }
+    response.writeHead.mockReturnValue(response)
+    handler!({ url: undefined } as unknown as http.IncomingMessage, response as unknown as http.ServerResponse)
+
+    expect(response.writeHead).toHaveBeenCalledWith(404)
+    expect(urls).toEqual([])
+    listener.close()
+  })
+
+  it('closes cleanly when the return arrives before the timeout is armed', async () => {
+    const createServer = http.createServer.bind(http)
+    let handler: http.RequestListener | undefined
+    vi.spyOn(http, 'createServer').mockImplementation(((listener: http.RequestListener) => {
+      handler = listener
+      return createServer(listener)
+    }) as typeof http.createServer)
+    const port = await freePort()
+    const urls: string[] = []
+    void listenForBankRedirect(`http://localhost:${port}/bank`, (url) => urls.push(url))
+
+    const response = { writeHead: vi.fn(), end: vi.fn((_page: string, done: () => void) => done()) }
+    response.writeHead.mockReturnValue(response)
+    handler!({ url: '/bank?code=abc' } as http.IncomingMessage, response as unknown as http.ServerResponse)
+
+    expect(response.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({ 'content-type': expect.stringContaining('text/html') }))
+    expect(urls).toEqual([`http://localhost:${port}/bank?code=abc`])
+    await new Promise((resolve) => setTimeout(resolve, 50))
     await expect(get(port, '/bank')).rejects.toThrow()
   })
 })

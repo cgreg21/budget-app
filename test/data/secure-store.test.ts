@@ -10,6 +10,51 @@ afterEach(() => { vi.restoreAllMocks(); removeTempUserDataDir(temp) })
 
 const secureStore = () => import('../../src/data/secure-store.js')
 
+describe('accountId', () => {
+  it('orders the attributes and tolerates a missing value', async () => {
+    const { accountId } = await secureStore()
+    expect(accountId(account)).toBe('org.test.Schema\ncalendar=https://dav.test/cal\nusername=alice')
+    expect(accountId({ ...account, attributes: { b: '2', a: undefined as unknown as string } })).toBe('org.test.Schema\na=\nb=2')
+  })
+})
+
+describe('libsecret keyring backend', () => {
+  const namespace = (overrides: Record<string, unknown> = {}) => ({
+    Schema: { new: () => 'schema' }, SchemaFlags: { NONE: 0 }, SchemaAttributeType: { STRING: 0 }, COLLECTION_DEFAULT: 'default',
+    passwordLookupSync: () => 'stored', passwordStoreSync: () => true, ...overrides,
+  })
+  it('is unavailable when the typelib cannot be loaded, and loads it only once', async () => {
+    const { KeyringBackend } = await secureStore()
+    const loader = vi.fn(async () => { throw new Error('Missing typelib') })
+    const backend = new KeyringBackend(loader)
+    await expect(backend.available()).resolves.toBe(false)
+    await expect(backend.load(account)).resolves.toBe('')
+    await expect(backend.save(account, 'x')).resolves.toBe(false)
+    expect(loader).toHaveBeenCalledTimes(1)
+  })
+  it('is unavailable when the namespace lacks the password functions', async () => {
+    const { KeyringBackend } = await secureStore()
+    const noStore = new KeyringBackend(async () => namespace({ passwordStoreSync: undefined }) as never)
+    await expect(noStore.available()).resolves.toBe(false)
+    await expect(noStore.load(account)).resolves.toBe('stored')
+    await expect(noStore.save(account, 'x')).resolves.toBe(false)
+    const noLookup = new KeyringBackend(async () => namespace({ passwordLookupSync: undefined }) as never)
+    await expect(noLookup.available()).resolves.toBe(false)
+    await expect(noLookup.load(account)).resolves.toBe('')
+  })
+  it('round-trips through the stubbed keyring by default', async () => {
+    const { KeyringBackend } = await secureStore()
+    const { clearStubbedKeyring } = await import('../helpers/secret-stub.js')
+    clearStubbedKeyring()
+    const backend = new KeyringBackend()
+    await expect(backend.available()).resolves.toBe(true)
+    await expect(backend.load(account)).resolves.toBe('')
+    await expect(backend.save(account, 'secret')).resolves.toBe(true)
+    await expect(backend.load(account)).resolves.toBe('secret')
+    clearStubbedKeyring()
+  })
+})
+
 describe('encrypted file backend', () => {
   it('creates a user-only key file and round-trips secrets without storing them in clear', async () => {
     const { EncryptedFileBackend } = await secureStore()
@@ -35,6 +80,26 @@ describe('encrypted file backend', () => {
     fs.writeFileSync(path.join(temp.dataDir, 'secrets.json'), '{ not json')
     await expect(new EncryptedFileBackend().load(account)).resolves.toBe('')
   })
+  it.each(['null', '[]', '{ "entries": 5 }', '{ "version": 1 }'])('treats the secrets file %s as empty', async (contents) => {
+    const { EncryptedFileBackend } = await secureStore()
+    fs.mkdirSync(temp.dataDir, { recursive: true })
+    fs.writeFileSync(path.join(temp.dataDir, 'secrets.json'), contents)
+    await expect(new EncryptedFileBackend().load(account)).resolves.toBe('')
+  })
+  it('answers empty for an entry missing its nonce or tag', async () => {
+    const { EncryptedFileBackend, accountId } = await secureStore()
+    fs.mkdirSync(temp.dataDir, { recursive: true })
+    fs.writeFileSync(path.join(temp.dataDir, 'secrets.json'), JSON.stringify({ version: 1, entries: { [accountId(account)]: { backend: 'encrypted-file', data: 'AAAA' } } }))
+    await expect(new EncryptedFileBackend().load(account)).resolves.toBe('')
+  })
+  it('is unavailable when the key file cannot be created, and reports a failed write', async () => {
+    const { EncryptedFileBackend } = await secureStore()
+    fs.mkdirSync(temp.dataDir, { recursive: true })
+    const blocker = path.join(temp.dataDir, 'blocker')
+    fs.writeFileSync(blocker, 'not a directory')
+    await expect(new EncryptedFileBackend(undefined, path.join(blocker, 'secrets.key')).available()).resolves.toBe(false)
+    await expect(new EncryptedFileBackend(temp.dataDir).save(account, 'secret')).resolves.toBe(false)
+  })
 })
 
 describe('macOS keychain backend', () => {
@@ -57,8 +122,14 @@ describe('macOS keychain backend', () => {
   it('reports a missing item as no password and a failed write as not saved', async () => {
     const { KeychainBackend } = await secureStore()
     const backend = new KeychainBackend(() => { throw new Error('exit 44') }, 'darwin')
+    await expect(backend.available()).resolves.toBe(false)
     await expect(backend.load(account)).resolves.toBe('')
     await expect(backend.save(account, 'x')).resolves.toBe(false)
+  })
+  it('runs the real security tool by default', async () => {
+    const { KeychainBackend } = await secureStore()
+    // Off macOS the tool does not exist; on macOS the item does not. Either way: no password.
+    await expect(new KeychainBackend(undefined, 'darwin').load({ ...account, schema: 'org.test.Missing' })).resolves.toBe('')
   })
 })
 
@@ -107,6 +178,22 @@ describe('secure store chain', () => {
     await expect(store.load(account)).resolves.toBe('updated')
     expect(unavailable.load).not.toHaveBeenCalled()
     expect(failing.load).not.toHaveBeenCalled()
+    await expect(store.save(account, '')).resolves.toBe(true)
+    await expect(store.load(account)).resolves.toBe('from-backend')
+    expect(working.load).toHaveBeenCalledTimes(2)
+  })
+  it('does not cache a secret the backend refused to keep', async () => {
+    const { SecureStore } = await secureStore()
+    const refusing = { name: 'keyring' as const, available: vi.fn(async () => true), load: vi.fn(async () => ''), save: vi.fn(async () => false) }
+    const store = new SecureStore([refusing])
+    await expect(store.save(account, 'x')).resolves.toBe(false)
+    await expect(store.load(account)).resolves.toBe('')
+    await expect(store.load(account)).resolves.toBe('')
+    expect(refusing.load).toHaveBeenCalledTimes(2)
+  })
+  it('builds the default chain from the keyring down to the encrypted file', async () => {
+    const { defaultBackends } = await secureStore()
+    expect(defaultBackends().map((backend) => backend.name)).toEqual(['keyring', 'keychain', 'dpapi', 'encrypted-file'])
   })
   it('cannot save when no backend works', async () => {
     const { SecureStore } = await secureStore()

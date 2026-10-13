@@ -47,6 +47,11 @@ describe('calendar local state', () => {
     expect(fs.readFileSync(path.join(temp.dataDir, 'calendar.json'), 'utf8')).not.toContain('sensitive')
     expect(store.calendar.baseline.t1.etag).toBe('v1')
   })
+  it('reads a state that was never synchronized', async () => {
+    writeJson(path.join(temp.dataDir, 'calendar.json'), { config, baseline: {} })
+    const store = await stateStore()
+    expect(store.calendar).toEqual({ config, baseline: {}, lastSync: undefined })
+  })
 })
 
 describe('calendar secure password storage', () => {

@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, afterEach } from 'vitest'
 
-import type { Recurrence } from 'budget-lib'
+import { DEFAULT_GENERAL_SETTINGS, type Recurrence } from 'budget-lib'
 import {
+  configureDisplaySettings,
   describeCalendarState,
   formatCalendarLastSync,
   formatAmount,
@@ -185,5 +186,36 @@ describe('in English (BUDGET_APP_LOCALE=en)', () => {
       }
       expect(formatRecurrencePeriod(series)).toBe('starting September 2026')
     })
+  })
+})
+
+describe('with explicit display settings', () => {
+  afterEach(() => {
+    configureDisplaySettings(DEFAULT_GENERAL_SETTINGS)
+  })
+
+  it('formats amounts with a space and a comma regardless of the language', () => {
+    configureDisplaySettings({ ...DEFAULT_GENERAL_SETTINGS, amountFormat: 'space-comma', currency: 'USD' })
+    expect(normalize(formatAmount(1200))).toBe('1 200,00 $US')
+  })
+
+  it('formats amounts with a comma and a dot regardless of the language', () => {
+    configureDisplaySettings({ ...DEFAULT_GENERAL_SETTINGS, amountFormat: 'comma-dot', currency: 'GBP' })
+    expect(normalize(formatAmount(1200))).toBe('£1,200.00')
+  })
+
+  it('keeps ISO dates as they are', () => {
+    configureDisplaySettings({ ...DEFAULT_GENERAL_SETTINGS, dateFormat: 'yyyy-mm-dd' })
+    expect(formatDate('2026-09-17')).toBe('2026-09-17')
+  })
+
+  it('orders dates day first', () => {
+    configureDisplaySettings({ ...DEFAULT_GENERAL_SETTINGS, dateFormat: 'dd-mm-yyyy' })
+    expect(formatDate('2026-09-17')).toBe('17/09/2026')
+  })
+
+  it('orders dates month first', () => {
+    configureDisplaySettings({ ...DEFAULT_GENERAL_SETTINGS, dateFormat: 'mm-dd-yyyy' })
+    expect(formatDate('2026-09-17')).toBe('09/17/2026')
   })
 })

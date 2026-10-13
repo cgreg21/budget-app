@@ -13,6 +13,9 @@ export default defineConfig({
       // on a machine that has no libsecret. Tests needing a *missing* typelib
       // inject their own loader instead.
       'gi:Secret-1': fromRoot('./test/helpers/secret-stub.ts'),
+      // `ui/theme.ts` only asks the default style manager for a colour scheme;
+      // the stub records it so the theme mapping can be checked headlessly.
+      'gi:Adw-1': fromRoot('./test/helpers/adw-stub.ts'),
     },
   },
   test: {

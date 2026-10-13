@@ -247,6 +247,18 @@ describe('transactions', () => {
     expect(budget.monthsWithData).toEqual(['2026-11', '2026-09'])
   })
 
+  it('totals every month that holds data, oldest first', () => {
+    const { budget } = openBudget()
+    budget.add(input({ date: '2026-11-10', kind: 'income', amount: 1200 }))
+    budget.add(input({ date: '2026-09-10', amount: 45 }))
+    budget.add(input({ date: '2026-09-12', amount: 5 }))
+
+    expect(budget.monthlyTotals).toEqual([
+      { month: '2026-09', income: 0, expense: 50 },
+      { month: '2026-11', income: 1200, expense: 0 },
+    ])
+  })
+
   describe('importTransactions', () => {
     const imported = (id: string, date: string): Transaction => ({ id, ...input({ date }) })
 

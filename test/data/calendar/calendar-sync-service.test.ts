@@ -271,7 +271,7 @@ describe('offline and lifecycle', () => {
     await service.syncNow()
     expect(budget.transactions[0].amount).toBe(99)
   })
-  it.each([401, 403, 404, 500])('reports HTTP %s as error, not offline', async (status) => {
+  it.each([401, 403, 404, 412, 500])('reports HTTP %s as error, not offline', async (status) => {
     const { service, server } = await setup()
     server.failure(status)
     await service.syncNow()
@@ -292,5 +292,147 @@ describe('offline and lifecycle', () => {
     release()
     await running
     expect(budget.allTransactions).toEqual([])
+  })
+  it('ignores a failure that lands after disposal', async () => {
+    const { service, server } = await setup()
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    server.hold(() => gate)
+    const running = service.syncNow()
+    await vi.waitFor(() => expect(server.transport).toHaveBeenCalled())
+    server.offline(true)
+    service.dispose()
+    server.hold()
+    release()
+    await running
+    expect(service.status.state).toBe('syncing')
+  })
+  it('reports being offline without scheduling a retry before start', async () => {
+    vi.useFakeTimers()
+    const { service, server } = await setup()
+    server.offline(true)
+    await service.syncNow()
+    expect(service.status).toMatchObject({ state: 'offline', message: 'Agenda inaccessible' })
+    server.offline(false)
+    server.transport.mockClear()
+    await vi.advanceTimersByTimeAsync(120_000)
+    expect(server.transport).not.toHaveBeenCalled()
+  })
+  it('wraps a transport that throws something other than an Error', async () => {
+    const server = fakeServer()
+    const transport = vi.fn(async () => { throw 'cable unplugged' }) as unknown as typeof server.transport
+    const { service } = await setup({ ...server, transport })
+    await service.syncNow()
+    expect(service.status.state).toBe('offline')
+    await expect(service.checkConnection(config, 'password')).rejects.toThrow('Agenda inaccessible')
+  })
+  it('reports a password store failure that is not an Error', async () => {
+    const { budget, categories, server } = await setup()
+    const passwords = { load: async () => { throw 'keyring locked' }, save: async () => true, backendName: async () => null }
+    const service = track(new Service({ budgetStore: budget, categoryStore: categories, transport: server.transport, passwords: passwords as never }))
+    await service.syncNow()
+    expect(service.status).toMatchObject({ state: 'error', message: 'keyring locked' })
+  })
+  it('retries later when the server refused some events, and flushes a pending debounce on demand', async () => {
+    vi.useFakeTimers()
+    const server = fakeServer()
+    let refusePut = true
+    const transport = vi.fn(async (request: HttpRequest) => (refusePut && request.method === 'PUT'
+      ? { status: 412, headers: {}, body: '' }
+      : server.transport(request))) as unknown as typeof server.transport
+    const { service, budget } = await setup({ ...server, transport })
+    budget.importTransactions([tx()])
+    await service.syncNow()
+    expect(server.events.size).toBe(0)
+    service.start()
+    await service.syncNow()
+    expect(service.status.state).toBe('online')
+    budget.importTransactions([tx({ id: 't2', date: '2026-09-11' })])
+    await service.syncNow()
+    refusePut = false
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(server.events.size).toBe(2)
+  })
+  it('starts only once and notifies status listeners until they unsubscribe', async () => {
+    const { service, server } = await setup()
+    const listener = vi.fn()
+    const unsubscribe = service.onStatusChange(listener)
+    service.start()
+    service.start()
+    await service.syncNow()
+    expect(listener).toHaveBeenCalled()
+    expect(server.transport.mock.calls.some(([request]) => request.method === 'REPORT')).toBe(true)
+    const calls = listener.mock.calls.length
+    unsubscribe()
+    await service.syncNow()
+    expect(listener).toHaveBeenCalledTimes(calls)
+  })
+})
+
+describe('settings validation', () => {
+  it('refuses to enable synchronization with an incomplete address', async () => {
+    const { service } = await setup()
+    expect(() => service.saveConfig({ enabled: true, calendarUrl: 'ftp://dav.test/cal', username: 'alice' })).toThrow('Indiquez')
+    await expect(service.checkConnection({ enabled: true, calendarUrl: 'ftp://dav.test/cal', username: 'alice' })).rejects.toThrow('Indiquez')
+    await expect(service.savePassword({ enabled: true, calendarUrl: '', username: 'alice' }, 'x')).rejects.toThrow('Indiquez')
+  })
+  it('needs a saved password to test the connection without one given', async () => {
+    const { service, server } = await setup()
+    await expect(service.checkConnection({ ...config, username: 'nobody' })).rejects.toThrow('Indiquez')
+    await expect(service.checkConnection(config)).resolves.toBeUndefined()
+    expect(server.transport).toHaveBeenCalledTimes(1)
+  })
+  it('reports the connection test as offline when the server cannot be reached', async () => {
+    const { service, server } = await setup()
+    server.offline(true)
+    await expect(service.checkConnection(config, 'password')).rejects.toThrow('Agenda inaccessible')
+  })
+  it('passes an unexpected failure of the connection test through', async () => {
+    const server = fakeServer()
+    const transport = vi.fn(async () => null as never) as unknown as typeof server.transport
+    const { service } = await setup({ ...server, transport })
+    await expect(service.checkConnection(config, 'password')).rejects.toThrow(TypeError)
+  })
+  it('drops a run whose password arrives after disposal', async () => {
+    const { budget, categories, server } = await setup()
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const passwords = { load: async () => { await gate; return 'password' }, save: async () => true, backendName: async () => null }
+    const service = track(new Service({ budgetStore: budget, categoryStore: categories, transport: server.transport, passwords: passwords as never }))
+    const running = service.syncNow()
+    service.dispose()
+    release()
+    await running
+    expect(service.status.state).toBe('syncing')
+    expect(server.transport).not.toHaveBeenCalled()
+  })
+  it('tells where the password is kept', async () => {
+    const { service } = await setup()
+    await expect(service.passwordStorage()).resolves.toBe('keyring')
+  })
+  it('reports a password that could not be kept, ignores resume before start and leaves a shared state store open', async () => {
+    const { budget, categories, server } = await setup()
+    const { CalendarStateStore } = await import('../../../src/data/calendar/calendar-state-store.js')
+    const stateStore = track(new CalendarStateStore())
+    const passwords = { load: async () => '', save: async () => false, backendName: async () => null }
+    const service = track(new Service({ budgetStore: budget, categoryStore: categories, transport: server.transport, passwords: passwords as never, stateStore }))
+    await expect(service.savePassword(config, 'password')).resolves.toBe(false)
+    service.resume()
+    await service.syncNow()
+    expect(server.transport).not.toHaveBeenCalled()
+    service.dispose()
+    stateStore.save({ config, baseline: {} })
+    expect(stateStore.calendar.config).toEqual(config)
+  })
+  it('reports an incomplete configuration found on disk instead of syncing', async () => {
+    writeJson(path.join(temp.dataDir, 'calendar.json'), { config: { enabled: true, calendarUrl: 'ftp://dav.test/cal', username: 'alice' }, baseline: {} })
+    const server = fakeServer()
+    const recurrences = track(new Recurrences())
+    const budget = track(new Budget(recurrences))
+    const service = track(new Service({ budgetStore: budget, categoryStore: track(new Categories()), transport: server.transport }))
+    expect(service.config.enabled).toBe(true)
+    await service.syncNow()
+    expect(service.status).toMatchObject({ state: 'error', message: expect.stringContaining('Indiquez') })
+    expect(server.transport).not.toHaveBeenCalled()
   })
 })
