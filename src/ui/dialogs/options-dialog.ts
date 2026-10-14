@@ -15,6 +15,7 @@ import type { BankService } from '../../data/bank/bank-service.js'
 import type { BudgetStore } from '../../data/budget-store.js'
 import type { CalendarSyncService } from '../../data/calendar/calendar-sync-service.js'
 import type { CategoryStore } from '../../data/category-store.js'
+import type { ConfigArchiveService } from '../../data/config-archive-service.js'
 import type { GeneralSettingsStore } from '../../data/general-settings-store.js'
 import type { RecurrenceStore } from '../../data/recurrence-store.js'
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
@@ -42,6 +43,7 @@ export interface OptionsDialogOptions {
   recurrenceStore: RecurrenceStore
   bankService: BankService
   calendarSyncService: CalendarSyncService
+  configArchive: ConfigArchiveService
   /** Start month proposed for a new recurrence — the month on screen. */
   selectedMonth: MonthKey
 }
@@ -56,6 +58,7 @@ export function openOptionsDialog(
     recurrenceStore,
     bankService,
     calendarSyncService,
+    configArchive,
     selectedMonth,
   }: OptionsDialogOptions,
 ): void {
@@ -107,6 +110,7 @@ export function openOptionsDialog(
   })
   const dataGroups = createDataGroups({
     stores: { budgetStore, categoryStore, thresholdsStore, recurrenceStore },
+    configArchive,
     parent: dialog,
     notify,
   })

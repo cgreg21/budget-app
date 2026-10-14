@@ -120,6 +120,8 @@ describe('calendar settings and credentials', () => {
     expect(service.status.state).toBe('error')
     expect(server.transport).not.toHaveBeenCalled()
     await expect(service.hasPassword({ ...config, username: 'missing' })).resolves.toBe(false)
+    await expect(service.loadPassword(config)).resolves.toBe('password')
+    await expect(service.loadPassword({ ...config, username: 'missing' })).resolves.toBe('')
     expect(() => service.saveConfig({ ...config, calendarUrl: 'invalid' })).toThrow()
   })
 })

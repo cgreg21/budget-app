@@ -19,6 +19,7 @@ import type { BankService } from '../data/bank/bank-service.js'
 import type { BudgetStore } from '../data/budget-store.js'
 import type { CalendarSyncService } from '../data/calendar/calendar-sync-service.js'
 import type { CategoryStore } from '../data/category-store.js'
+import type { ConfigArchiveService } from '../data/config-archive-service.js'
 import type { GeneralSettingsStore } from '../data/general-settings-store.js'
 import type { RecurrenceStore } from '../data/recurrence-store.js'
 import type { ThresholdsStore } from '../data/thresholds-store.js'
@@ -51,6 +52,7 @@ export interface MainWindowDeps {
   generalSettingsStore: GeneralSettingsStore
   bankService: BankService
   calendarSyncService: CalendarSyncService
+  configArchive: ConfigArchiveService
 }
 
 export interface MainWindow {
@@ -88,6 +90,7 @@ interface OptionsActionDeps {
   generalSettingsStore: GeneralSettingsStore
   bankService: BankService
   calendarSyncService: CalendarSyncService
+  configArchive: ConfigArchiveService
 }
 
 /** The options entry lives in the main menu, so it is driven by an action. */
@@ -101,6 +104,7 @@ function registerOptionsAction({
   generalSettingsStore,
   bankService,
   calendarSyncService,
+  configArchive,
 }: OptionsActionDeps): void {
   const action = Gio.SimpleAction.new('options', null)
   action.on('activate', () => openOptionsDialog(window, {
@@ -111,6 +115,7 @@ function registerOptionsAction({
     generalSettingsStore,
     bankService,
     calendarSyncService,
+    configArchive,
     // Read on activation: a new recurrence starts from the month on screen.
     selectedMonth: budgetStore.selectedMonth,
   }))
@@ -235,6 +240,7 @@ export function createMainWindow({
   generalSettingsStore,
   bankService,
   calendarSyncService,
+  configArchive,
 }: MainWindowDeps): MainWindow {
   const window = new Adw.ApplicationWindow({ application })
   window.setTitle(APP_NAME)
@@ -285,6 +291,7 @@ export function createMainWindow({
     generalSettingsStore,
     bankService,
     calendarSyncService,
+    configArchive,
   })
 
   const content = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })

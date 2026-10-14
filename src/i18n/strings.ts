@@ -191,6 +191,42 @@ export interface Strings {
     mergeOption: string
     replaceOption: string
   }
+  configGroup: {
+    groupTitle: string
+    groupDescription: string
+    exportTitle: string
+    exportSubtitle: string
+    importTitle: string
+    importSubtitle: string
+    filterName: string
+    passphraseHeading: string
+    exportPassphraseBody(minLength: number): string
+    importPassphraseBody: string
+    passphraseLabel: string
+    confirmPassphraseLabel: string
+    passphraseTooShort(minLength: number): string
+    passphraseMismatch: string
+    continueButton: string
+    importHeading: string
+    importBody(summary: string): string
+    importButton: string
+    sectionGeneral: string
+    sectionThresholds: string
+    sectionCalendar: string
+    sectionCalendarPassword: string
+    sectionBank: string
+    sectionBankKey: string
+    exported: string
+    imported: string
+    secretsRefused(secrets: string): string
+    operationFailed: string
+    unreadable: string
+    writeFailed: string
+    errorFormat: string
+    errorPassphrase: string
+    errorContent: string
+    errorWeakPassphrase: string
+  }
   iconPickerDialog: {
     title: string
   }

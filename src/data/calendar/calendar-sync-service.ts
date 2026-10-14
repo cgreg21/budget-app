@@ -114,7 +114,12 @@ export class CalendarSyncService {
   }
 
   async hasPassword(config: CalendarConfig): Promise<boolean> {
-    return (await this.#passwords.load(config)) !== ''
+    return (await this.loadPassword(config)) !== ''
+  }
+
+  /** The stored password, or '' — only the configuration export reads it; the UI never does. */
+  loadPassword(config: CalendarConfig): Promise<string> {
+    return this.#passwords.load(config)
   }
 
   /** How the password is kept on this machine, or `null` when it cannot be. */

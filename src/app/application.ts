@@ -21,6 +21,7 @@ import { BankStateStore } from '../data/bank/bank-state-store.js'
 import { BudgetStore } from '../data/budget-store.js'
 import { CalendarSyncService } from '../data/calendar/calendar-sync-service.js'
 import { CategoryStore } from '../data/category-store.js'
+import { ConfigArchiveService } from '../data/config-archive-service.js'
 import { RecurrenceStore } from '../data/recurrence-store.js'
 import { GeneralSettingsStore } from '../data/general-settings-store.js'
 import { ThresholdsStore } from '../data/thresholds-store.js'
@@ -74,15 +75,23 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
     const categoryStore = new CategoryStore()
     const thresholdsStore = new ThresholdsStore()
     const bankStateStore = new BankStateStore()
+    const bankKeyStore = new BankKeyStore()
     const bankService = new BankService({
       state: bankStateStore,
-      keys: new BankKeyStore(),
+      keys: bankKeyStore,
       categories: () => categoryStore.categories,
       importTransactions: (transactions) => budgetStore.importTransactions(transactions),
       openUrl: (url) => Gio.AppInfo.launchDefaultForUri(url, null),
       language: () => generalSettingsStore.settings.language,
     })
     const calendarSyncService = new CalendarSyncService({ budgetStore, categoryStore })
+    const configArchive = new ConfigArchiveService({
+      general: generalSettingsStore,
+      thresholds: thresholdsStore,
+      calendar: calendarSyncService,
+      bankState: bankStateStore,
+      bankKeys: bankKeyStore,
+    })
     const mainWindow = createMainWindow({
       application,
       budgetStore,
@@ -92,6 +101,7 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
       generalSettingsStore,
       bankService,
       calendarSyncService,
+      configArchive,
     })
 
     const networkMonitor = Gio.NetworkMonitor.getDefault()

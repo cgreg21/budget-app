@@ -160,6 +160,7 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │   ├── thresholds-store.ts       #   thresholds.json
 │   │   ├── recurrence-store.ts       #   recurrences.json
 │   │   ├── backup-service.ts         #   import / export, JSON archive and CSV
+│   │   ├── config-archive-service.ts #   the settings and secrets as one encrypted .budgetcfg file
 │   │   ├── category-store.ts         #   categories.json
 │   │   ├── secure-store.ts           #   secrets: keyring → macOS Keychain → DPAPI → encrypted file
 │   │   ├── bank/                     #   the bank import (Enable Banking)
@@ -203,10 +204,12 @@ The code is organised in layers, from the model outwards to the toolkit:
 │   │       ├── thresholds-group.ts   #     "Seuils" tab: x / y / z settings
 │   │       ├── recurrences-group.ts  #     "Récurrences" tab: recurring transactions
 │   │       ├── categories-group.ts   #     "Catégories" tab: category management
-│   │       ├── data-group.ts         #     "Données" tab: import / export
+│   │       ├── data-group.ts         #     "Données" tab: import / export, encrypted configuration
 │   │       ├── calendar-group.ts      # Calendar tab: CalDAV settings and status
 │   │       ├── file-dialogs.ts       #     choosing a file to read or write
 │   │       ├── import-mode-dialog.ts #     "remplacer ou fusionner ?"
+│   │       ├── passphrase-dialog.ts  #     the passphrase of a configuration file (typed twice to create one)
+│   │       ├── config-import-dialog.ts # "appliquer cette configuration ?", once the file is described
 │   │       └── about-dialog.ts
 │   └── app/                          # composition root
 │       ├── app-info.ts               #   id, name, version
@@ -251,6 +254,7 @@ Cette application permet de suivre revenus et dépenses, **mois par mois** :
   - **Sauvegarde complète** dans un fichier `.json` : catégories, seuils, récurrences et tous les mois de l'historique. À la relecture, l'application demande quoi en faire — **Fusionner** (les données actuelles sont conservées, seul ce qui manque est ajouté) ou **Remplacer** (le fichier devient la référence ; les mois qu'il ne contient pas sont supprimés). La fusion repère les doublons par leur contenu autant que par leur identifiant : réimporter deux fois la même sauvegarde n'ajoute rien la seconde fois.
   - **Export CSV** des transactions de tous les mois (`date;description;catégorie;type;montant`, décimales à la virgule, BOM UTF-8) : le fichier s'ouvre directement dans Excel ou LibreOffice.
   - **Import CSV** : chaque ligne rejoint le mois de sa date et **s'ajoute** aux transactions existantes. La lecture est tolérante — séparateur `;`, `,` ou tabulation, en-tête facultatif, dates `2026-09-17` ou `17/09/2026`, montants du genre `1 234,56 €`, type déduit du signe s'il manque — et les catégories inconnues sont créées. Les lignes illisibles sont comptées et ignorées.
+  - **Configuration chiffrée** (`.budgetcfg`) : les préférences générales, les seuils, le compte de l'agenda CalDAV **avec son mot de passe** et l'application bancaire **avec sa clé privée**, pour installer l'application sur un autre appareil sans tout ressaisir (le même fichier est lu par les applications mobile et web). À l'export, une **phrase secrète d'au moins 8 caractères** est demandée deux fois ; elle ne peut pas être retrouvée. À l'import, l'application la redemande, décrit ce que le fichier contient avant d'appliquer, puis remplace les réglages actuels : un secret absent du fichier est conservé, un fichier sans section bancaire ne touche pas à la banque, et les transactions, catégories et récurrences ne sont jamais modifiées. Voir [Configuration chiffrée](#configuration-chiffrée).
 
 ### Stockage
 
@@ -295,6 +299,31 @@ marqué `"format": "budget-app-backup"` et `"version"`, ce qui permet de refuser
 proprement un fichier qui n'en est pas une. Restaurer une sauvegarde les
 réécrit d'un bloc, puis l'interface se recharge sans qu'il soit nécessaire de
 redémarrer.
+
+### Configuration chiffrée
+
+Le fichier `.budgetcfg` exporté depuis l'onglet **Données** complète la
+sauvegarde : il emporte ce qu'elle laisse volontairement de côté — préférences
+générales, seuils, compte CalDAV (adresse, utilisateur, mot de passe) et
+application bancaire (identifiant, banque, adresse de retour, date de début,
+clé privée PEM). Le format et le chiffrement viennent de `budget-lib`
+(`config-archive`), partagés avec les applications mobile et web : le contenu
+JSON est chiffré en **AES-256-CBC** et authentifié par **HMAC-SHA256**, avec
+des clés dérivées de la phrase secrète par **PBKDF2-SHA256** (100 000
+itérations, sel aléatoire). Rien dans le fichier n'est lisible sans la phrase
+secrète, et celle-ci n'est stockée nulle part : perdue, le fichier l'est aussi.
+L'application distingue un fichier qui n'est pas une configuration (ou vient
+d'une version plus récente) d'une phrase secrète incorrecte ou d'un fichier
+altéré.
+
+À l'import, les secrets rejoignent le stockage sûr de la machine (voir
+[la synchronisation CalDAV](#synchronisation-avec-un-agenda-caldav)) ; s'il
+n'en accepte aucun, l'application le signale et les réglages sont appliqués
+sans eux — l'agenda reste alors désactivé. Un accès bancaire accordé à une autre
+application Enable Banking n'est pas conservé lorsque l'identifiant change.
+Ce fichier contient des secrets en clair une fois déchiffré : gardez-le hors
+des dépôts, des messageries et des dossiers synchronisés, et supprimez-le une
+fois l'autre appareil installé.
 
 ### Import bancaire
 
@@ -360,7 +389,8 @@ ne crée pas une seconde occurrence. Les modèles, catégories complètes, seuil
 préférences et accès bancaires ne sont pas envoyés. Le fichier
 `calendar.json` contient la configuration **sans mot de passe**, la référence
 de synchronisation et la date du dernier succès ; ces réglages ne font pas partie
-des sauvegardes. Changer de calendrier ou d’utilisateur réinitialise la référence,
+des sauvegardes (seule la [configuration chiffrée](#configuration-chiffrée) les
+emporte, mot de passe compris). Changer de calendrier ou d’utilisateur réinitialise la référence,
 jamais les transactions locales.
 
 Le mot de passe est conservé de façon permanente par le premier stockage sûr
@@ -375,7 +405,8 @@ disponible (`src/data/secure-store.ts`), dans cet ordre :
 
 L’onglet Agenda indique lequel est utilisé. Aucun de ces fichiers ne fait partie
 des sauvegardes et le mot de passe n’est jamais écrit en clair ni lu dans
-l’environnement.
+l’environnement ; il ne quitte la machine que dans une
+[configuration chiffrée](#configuration-chiffrée), à la demande de l’utilisateur.
 
 ## Tests
 
