@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_CATEGORY_ICON, base64Utf8, transactionToIcs, icsToTransaction, type CalendarConfig, type HttpRequest, type HttpResponse, type Transaction } from 'budget-lib'
+import { DEFAULT_CATEGORY_ICON, base64Utf8, categoriesToIcs, icsToCategories, CATEGORIES_BASELINE_KEY, transactionToIcs, icsToTransaction, type CalendarConfig, type HttpRequest, type HttpResponse, type Transaction } from 'budget-lib'
 import { createTempUserDataDir, removeTempUserDataDir, writeJson, type TempDataDir } from '../../helpers/temp-data-dir.js'
 
 const config: CalendarConfig = { enabled: true, calendarUrl: 'https://dav.test/cal', username: 'alice' }
@@ -38,7 +38,8 @@ function fakeServer() {
       return response(405)
     } finally { active-- }
   })
-  return { events, transport,
+  const transactionCount = () => [...events.keys()].filter((href) => !href.endsWith('/categories.ics')).length
+  return { events, transport, transactionCount,
     add: (transaction: Transaction, version = 1) => events.set('/cal/' + transaction.id + '.ics', { ics: transactionToIcs(transaction), version }),
     offline: (value: boolean) => { offline = value }, failure: (value?: number) => { failure = value },
     hold: (value?: () => Promise<void>) => { hold = value }, maxActive: () => maxActive }
@@ -126,6 +127,74 @@ describe('calendar settings and credentials', () => {
   })
 })
 
+describe('calendar category synchronization', () => {
+  const remote = [{ name: 'Zoo', icon: 'paw' }, { name: 'Cafe', icon: 'coffee' }]
+  const addList = (server: ReturnType<typeof fakeServer>, list = remote, version = 1) =>
+    server.events.set('/cal/categories.ics', { ics: categoriesToIcs(list), version })
+  const stored = (server: ReturnType<typeof fakeServer>) =>
+    [...server.events].map(([, event]) => icsToCategories(event.ics)).find((list) => list !== null)
+  it('stores the downloaded list, keeping local-only categories', async () => {
+    const { service, categories, server } = await setup()
+    categories.replaceAll([{ name: 'Local', icon: 'star' }, { name: 'Cafe', icon: 'x' }])
+    addList(server)
+    await service.syncNow()
+    expect(categories.categories).toEqual([...remote, { name: 'Local', icon: 'star' }])
+    expect(stored(server)).toEqual(categories.categories)
+    const baseline = JSON.parse(fs.readFileSync(path.join(temp.dataDir, 'calendar.json'), 'utf8')).baseline
+    expect(baseline[CATEGORIES_BASELINE_KEY]).toMatchObject({ href: '/cal/categories.ics' })
+  })
+  it('deduces categories from downloaded transactions', async () => {
+    const { service, categories, server } = await setup()
+    server.add(tx({ category: 'Brand new' }))
+    await service.syncNow()
+    expect(categories.categories.map((category) => category.name)).toContain('Brand new')
+    expect(stored(server)?.map((category) => category.name)).toContain('Brand new')
+  })
+  it('uploads the local list and tolerates the baseline key on restart', async () => {
+    const { service, categories, server } = await setup()
+    await service.syncNow()
+    expect(stored(server)).toEqual(categories.categories)
+    service.dispose()
+    const again = track(new Service({ budgetStore: track(new Budget(track(new Recurrences()))), categoryStore: categories, transport: server.transport }))
+    server.transport.mockClear()
+    await again.syncNow()
+    expect(server.transport.mock.calls.some(([request]) => request.method === 'PUT')).toBe(false)
+    expect(again.status.state).toBe('online')
+  })
+  it('does not write the category store when nothing changed', async () => {
+    const { service, categories, server } = await setup()
+    await service.syncNow()
+    const replace = vi.spyOn(categories, 'replaceAll')
+    await service.syncNow()
+    expect(replace).not.toHaveBeenCalled()
+  })
+  it('syncs after a local category edit, and keeps an edit made during the run', async () => {
+    vi.useFakeTimers()
+    const { service, categories, server } = await setup()
+    service.start()
+    await service.syncNow()
+    server.transport.mockClear()
+    categories.replaceAll(categories.categories)
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(server.transport).not.toHaveBeenCalled()
+    categories.add('Fresh')
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(stored(server)?.map((category) => category.name)).toContain('Fresh')
+    server.transport.mockClear()
+    addList(server, [{ name: 'Zoo', icon: 'paw' }], 5)
+    let release = () => {}
+    server.hold(() => new Promise<void>((resolve) => { release = resolve }))
+    const run = service.syncNow()
+    await vi.advanceTimersByTimeAsync(0)
+    categories.add('Midway')
+    server.hold(undefined)
+    release()
+    await run
+    expect(categories.categories.map((category) => category.name)).toContain('Midway')
+    expect(stored(server)?.map((category) => category.name)).toContain('Midway')
+  })
+})
+
 describe('calendar transaction synchronization', () => {
   it('uploads all months, creates categories, and applies remote edits, month moves and deletions', async () => {
     writeJson(path.join(temp.monthsDir, '2025-01.json'), [tx({ id: 'older', date: '2025-01-01' })])
@@ -153,7 +222,7 @@ describe('calendar transaction synchronization', () => {
     expect(icsToTransaction(server.events.get('/cal/t1.ics')!.ics)?.amount).toBe(42)
     budget.remove('t1')
     await service.syncNow()
-    expect(server.events.size).toBe(0)
+    expect(server.transactionCount()).toBe(0)
   })
   it('does not loop on downloads or delayed file notifications', async () => {
     vi.useFakeTimers()
@@ -181,7 +250,7 @@ describe('calendar transaction synchronization', () => {
     await vi.advanceTimersByTimeAsync(1_999)
     expect(server.transport).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)
-    expect(server.events.size).toBe(3)
+    expect(server.transactionCount()).toBe(3)
     expect(budget.selectedMonth).toBe('2026-09')
   })
   it('debounces transaction creation, series edits and deletions', async () => {
@@ -192,15 +261,15 @@ describe('calendar transaction synchronization', () => {
     budget.addRecurring(tx(), { frequency: 'monthly' })
     await vi.advanceTimersByTimeAsync(2_000)
     const occurrence = budget.transactions[0]
-    expect(server.events.size).toBe(1)
-    expect(icsToTransaction([...server.events.values()][0].ics)?.recurrenceId).toBe(occurrence.recurrenceId)
+    expect(server.transactionCount()).toBe(1)
+    expect(icsToTransaction([...server.events].find(([href]) => href !== '/cal/categories.ics')![1].ics)?.recurrenceId).toBe(occurrence.recurrenceId)
     budget.updateSeries(occurrence.id, { ...occurrence, amount: 90 }, { frequency: 'monthly' })
     await vi.advanceTimersByTimeAsync(2_000)
-    expect(icsToTransaction([...server.events.values()][0].ics)?.amount).toBe(90)
+    expect(icsToTransaction([...server.events].find(([href]) => href !== '/cal/categories.ics')![1].ics)?.amount).toBe(90)
     budget.updateSeries(occurrence.id, { ...occurrence, amount: 90 }, null)
     budget.remove(occurrence.id)
     await vi.advanceTimersByTimeAsync(2_000)
-    expect(server.events.size).toBe(0)
+    expect(server.transactionCount()).toBe(0)
   })
 
   it('preserves recurrence stamps and does not recreate remote deletions during application', async () => {
@@ -267,7 +336,7 @@ describe('offline and lifecycle', () => {
     server.offline(false)
     await vi.advanceTimersByTimeAsync(60_000)
     expect(service.status.state).toBe('online')
-    expect(server.events.size).toBe(1)
+    expect(server.transactionCount()).toBe(1)
     server.add(tx({ amount: 99 }), 2)
     service.resume()
     await service.syncNow()
@@ -345,7 +414,7 @@ describe('offline and lifecycle', () => {
     const { service, budget } = await setup({ ...server, transport })
     budget.importTransactions([tx()])
     await service.syncNow()
-    expect(server.events.size).toBe(0)
+    expect(server.transactionCount()).toBe(0)
     service.start()
     await service.syncNow()
     expect(service.status.state).toBe('online')
@@ -353,7 +422,7 @@ describe('offline and lifecycle', () => {
     await service.syncNow()
     refusePut = false
     await vi.advanceTimersByTimeAsync(60_000)
-    expect(server.events.size).toBe(2)
+    expect(server.transactionCount()).toBe(2)
   })
   it('starts only once and notifies status listeners until they unsubscribe', async () => {
     const { service, server } = await setup()

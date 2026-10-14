@@ -1,7 +1,7 @@
 import {
   CalDavClient, CalendarError, isCalendarConfigComplete, normalizeCalendarConfig,
   syncCalendar, transactionHash,
-  type CalendarConfig, type CalendarStatus, type HttpTransport, type Transaction,
+  type CalendarConfig, type CalendarStatus, type Category, type HttpTransport, type Transaction,
 } from 'budget-lib'
 import type { BudgetStore } from '../budget-store.js'
 import type { CategoryStore } from '../category-store.js'
@@ -38,6 +38,10 @@ export interface CalendarSyncOptions {
   stateStore?: CalendarStateStore
 }
 
+function categoryFingerprint(categories: readonly Category[]): string {
+  return JSON.stringify(categories.map(({ name, icon }) => [name, icon]))
+}
+
 function fingerprint(transactions: readonly Transaction[]): string {
   return JSON.stringify(transactions.map(transactionHash).sort())
 }
@@ -50,9 +54,11 @@ export class CalendarSyncService {
   readonly #transport: HttpTransport
   readonly #listeners = new Set<StoreListener>()
   readonly #unsubscribe: Unsubscribe
+  readonly #unsubscribeCategories: Unsubscribe
   readonly #ownsState: boolean
   #status: CalendarStatus
   #observed: string
+  #observedCategories: string
   #timer?: NodeJS.Timeout
   #retry?: NodeJS.Timeout
   #running?: Promise<void>
@@ -75,6 +81,14 @@ export class CalendarSyncService {
     }
     this.#status = { state: this.config.enabled ? 'offline' : 'disabled', lastSync: this.#state.calendar.lastSync }
     this.#observed = fingerprint(this.#budget.allTransactions)
+    this.#observedCategories = categoryFingerprint(this.#categories.categories)
+    this.#unsubscribeCategories = this.#categories.onChange(() => {
+      if (this.#disposed || this.#applying) return
+      const current = categoryFingerprint(this.#categories.categories)
+      if (current === this.#observedCategories) return
+      this.#observedCategories = current
+      this.schedule()
+    })
     this.#unsubscribe = this.#budget.onTransactionsChange(() => {
       if (this.#disposed || this.#applying) return
       const current = fingerprint(this.#budget.allTransactions)
@@ -166,6 +180,7 @@ export class CalendarSyncService {
     this.#version++
     this.clearTimers()
     this.#unsubscribe()
+    this.#unsubscribeCategories()
     this.#listeners.clear()
     if (this.#ownsState) this.#state.dispose()
   }
@@ -197,7 +212,8 @@ export class CalendarSyncService {
       if (this.#disposed || version !== this.#version) return
       const local = this.#budget.allTransactions
       const sent = new Map(local.map((transaction) => [transaction.id, transactionHash(transaction)]))
-      const result = await syncCalendar(new CalDavClient(config, password, this.#transport), local, this.#state.calendar.baseline)
+      const localCategories = this.#categories.categories.map(({ name, icon }) => ({ name, icon }))
+      const result = await syncCalendar(new CalDavClient(config, password, this.#transport), local, this.#state.calendar.baseline, localCategories)
       if (this.#disposed || version !== this.#version) return
       const currentTransactions = this.#budget.allTransactions
       if (fingerprint(currentTransactions) !== fingerprint(local)) this.#dirty = true
@@ -209,7 +225,12 @@ export class CalendarSyncService {
       const removed = result.removeLocal.filter(unchanged)
       this.#applying = true
       try {
-        for (const transaction of upserts) this.#categories.add(transaction.category)
+        if (result.categories !== null) {
+          // Category edits made during the run win and are sent in the next one.
+          if (categoryFingerprint(this.#categories.categories) === categoryFingerprint(localCategories)) this.#categories.replaceAll(result.categories)
+          else this.#dirty = true
+        }
+        this.#observedCategories = categoryFingerprint(this.#categories.categories)
         this.#budget.applyCalendarChanges(upserts, removed)
         this.#observed = fingerprint(this.#budget.allTransactions)
         const now = new Date().toISOString()
