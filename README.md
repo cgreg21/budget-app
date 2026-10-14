@@ -259,7 +259,7 @@ Cette application permet de suivre revenus et dépenses, **mois par mois** :
 ### Stockage
 
 Le budget est conservé sur cette machine et reste modifiable sans connexion
-réseau. La synchronisation facultative CalDAV partage uniquement les transactions
+réseau. La synchronisation facultative CalDAV partage uniquement les transactions et la liste des catégories
 avec le calendrier choisi (voir ci-dessous). Les données sont écrites en JSON sous le répertoire de données utilisateur
 (`%LOCALAPPDATA%\budget-app\` sous Windows, `~/.local/share/budget-app/` sous Linux) :
 
@@ -383,9 +383,18 @@ Les catégories manquantes des transactions téléchargées sont créées avec l
 icône par défaut. Les suppressions se propagent dans les deux sens ; si les deux
 côtés ont modifié le même événement, le calendrier l’emporte au prochain passage.
 
+La liste des catégories (noms, icônes, ordre) est synchronisée par un événement
+supplémentaire du calendrier (`categories@budget`). Si les deux côtés ont changé,
+le calendrier l’emporte sur l’ordre et les icônes, et les catégories uniquement
+locales sont conservées ; une catégorie utilisée par une transaction est ajoutée si
+elle manque. La suppression d’une catégorie n’est pas propagée (union des
+listes). Les anciennes versions ignorent cet événement. Une modification locale
+(ajout, renommage, icône, suppression, ordre) déclenche une synchronisation
+comme celle d’une transaction.
+
 Chaque occurrence récurrente est un événement ordinaire (pas de RRULE). Son
 marqueur `recurrenceId` est conservé pour que la réapplication d’un modèle local
-ne crée pas une seconde occurrence. Les modèles, catégories complètes, seuils,
+ne crée pas une seconde occurrence. Les modèles, seuils,
 préférences et accès bancaires ne sont pas envoyés. Le fichier
 `calendar.json` contient la configuration **sans mot de passe**, la référence
 de synchronisation et la date du dernier succès ; ces réglages ne font pas partie
