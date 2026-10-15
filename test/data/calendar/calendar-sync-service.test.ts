@@ -38,7 +38,7 @@ function fakeServer() {
       return response(405)
     } finally { active-- }
   })
-  const transactionCount = () => [...events.keys()].filter((href) => !href.endsWith('/categories.ics')).length
+  const transactionCount = () => [...events.keys()].filter((href) => !href.endsWith('/categories.ics') && !href.includes('recurrence-')).length
   return { events, transport, transactionCount,
     add: (transaction: Transaction, version = 1) => events.set('/cal/' + transaction.id + '.ics', { ics: transactionToIcs(transaction), version }),
     offline: (value: boolean) => { offline = value }, failure: (value?: number) => { failure = value },
@@ -61,7 +61,7 @@ async function setup(server = fakeServer()) {
   const budget = track(new Budget(recurrences))
   budget.selectMonth('2026-09')
   const categories = track(new Categories())
-  const service = track(new Service({ budgetStore: budget, categoryStore: categories, transport: server.transport }))
+  const service = track(new Service({ budgetStore: budget, categoryStore: categories, recurrenceStore: recurrences, transport: server.transport }))
   await service.savePassword(config, 'password')
   service.saveConfig(config)
   return { service, budget, categories, recurrences, server }
@@ -155,7 +155,7 @@ describe('calendar category synchronization', () => {
     await service.syncNow()
     expect(stored(server)).toEqual(categories.categories)
     service.dispose()
-    const again = track(new Service({ budgetStore: track(new Budget(track(new Recurrences()))), categoryStore: categories, transport: server.transport }))
+    const again = track(new Service({ budgetStore: track(new Budget(track(new Recurrences()))), categoryStore: categories, recurrenceStore: track(new Recurrences()), transport: server.transport }))
     server.transport.mockClear()
     await again.syncNow()
     expect(server.transport.mock.calls.some(([request]) => request.method === 'PUT')).toBe(false)
@@ -262,14 +262,16 @@ describe('calendar transaction synchronization', () => {
     await vi.advanceTimersByTimeAsync(2_000)
     const occurrence = budget.transactions[0]
     expect(server.transactionCount()).toBe(1)
-    expect(icsToTransaction([...server.events].find(([href]) => href !== '/cal/categories.ics')![1].ics)?.recurrenceId).toBe(occurrence.recurrenceId)
+    expect(icsToTransaction([...server.events].find(([href]) => href !== '/cal/categories.ics' && !href.includes('recurrence-'))![1].ics)?.recurrenceId).toBe(occurrence.recurrenceId)
+    expect([...server.events.keys()].some((href) => href.includes('recurrence-'))).toBe(true)
     budget.updateSeries(occurrence.id, { ...occurrence, amount: 90 }, { frequency: 'monthly' })
     await vi.advanceTimersByTimeAsync(2_000)
-    expect(icsToTransaction([...server.events].find(([href]) => href !== '/cal/categories.ics')![1].ics)?.amount).toBe(90)
+    expect(icsToTransaction([...server.events].find(([href]) => href !== '/cal/categories.ics' && !href.includes('recurrence-'))![1].ics)?.amount).toBe(90)
     budget.updateSeries(occurrence.id, { ...occurrence, amount: 90 }, null)
     budget.remove(occurrence.id)
     await vi.advanceTimersByTimeAsync(2_000)
     expect(server.transactionCount()).toBe(0)
+    expect([...server.events.keys()].some((href) => href.includes('recurrence-'))).toBe(false)
   })
 
   it('preserves recurrence stamps and does not recreate remote deletions during application', async () => {
@@ -314,7 +316,7 @@ describe('calendar transaction synchronization', () => {
     await service.syncNow()
     service.dispose()
     server.events.clear()
-    const next = track(new Service({ budgetStore: budget, categoryStore: categories, transport: server.transport }))
+    const next = track(new Service({ budgetStore: budget, categoryStore: categories, recurrenceStore: track(new Recurrences()), transport: server.transport }))
     await next.syncNow()
     expect(budget.allTransactions).toEqual([])
     expect(next.status.lastSync).toBeDefined()
@@ -400,7 +402,7 @@ describe('offline and lifecycle', () => {
   it('reports a password store failure that is not an Error', async () => {
     const { budget, categories, server } = await setup()
     const passwords = { load: async () => { throw 'keyring locked' }, save: async () => true, backendName: async () => null }
-    const service = track(new Service({ budgetStore: budget, categoryStore: categories, transport: server.transport, passwords: passwords as never }))
+    const service = track(new Service({ budgetStore: budget,     categoryStore: categories, recurrenceStore: track(new Recurrences()), transport: server.transport, passwords: passwords as never }))
     await service.syncNow()
     expect(service.status).toMatchObject({ state: 'error', message: 'keyring locked' })
   })
@@ -469,7 +471,7 @@ describe('settings validation', () => {
     let release!: () => void
     const gate = new Promise<void>((resolve) => { release = resolve })
     const passwords = { load: async () => { await gate; return 'password' }, save: async () => true, backendName: async () => null }
-    const service = track(new Service({ budgetStore: budget, categoryStore: categories, transport: server.transport, passwords: passwords as never }))
+    const service = track(new Service({ budgetStore: budget,     categoryStore: categories, recurrenceStore: track(new Recurrences()), transport: server.transport, passwords: passwords as never }))
     const running = service.syncNow()
     service.dispose()
     release()
@@ -486,7 +488,7 @@ describe('settings validation', () => {
     const { CalendarStateStore } = await import('../../../src/data/calendar/calendar-state-store.js')
     const stateStore = track(new CalendarStateStore())
     const passwords = { load: async () => '', save: async () => false, backendName: async () => null }
-    const service = track(new Service({ budgetStore: budget, categoryStore: categories, transport: server.transport, passwords: passwords as never, stateStore }))
+    const service = track(new Service({ budgetStore: budget, categoryStore: categories, recurrenceStore: track(new Recurrences()), transport: server.transport, passwords: passwords as never, stateStore }))
     await expect(service.savePassword(config, 'password')).resolves.toBe(false)
     service.resume()
     await service.syncNow()
@@ -500,7 +502,7 @@ describe('settings validation', () => {
     const server = fakeServer()
     const recurrences = track(new Recurrences())
     const budget = track(new Budget(recurrences))
-    const service = track(new Service({ budgetStore: budget, categoryStore: track(new Categories()), transport: server.transport }))
+    const service = track(new Service({ budgetStore: budget, categoryStore: track(new Categories()), recurrenceStore: track(new Recurrences()), transport: server.transport }))
     expect(service.config.enabled).toBe(true)
     await service.syncNow()
     expect(service.status).toMatchObject({ state: 'error', message: expect.stringContaining('Indiquez') })

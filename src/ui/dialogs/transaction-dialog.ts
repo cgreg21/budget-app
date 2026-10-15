@@ -50,7 +50,7 @@ export interface TransactionSubmission {
 
 export interface TransactionDialogOptions {
   categories: readonly Category[]
-  /** Date given to a new transaction, so it lands in the month on screen. Ignored when editing. */
+  /** Date given to a new transaction, so it lands in the month on screen. */
   defaultDate: string
   /** When provided, the dialog edits this transaction instead of creating one. */
   transaction?: Transaction
@@ -68,6 +68,14 @@ interface TransactionForm {
 
 function defaultDescription(kind: TransactionKind): string {
   return t().transactionDialog.defaultDescription(kind)
+}
+
+/** A real calendar day written YYYY-MM-DD. */
+function isIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  const parsed = new Date(year, month - 1, day)
+  return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day
 }
 
 function createForm(
@@ -107,6 +115,12 @@ function createForm(
   })
   group.add(amountRow)
 
+  const dateRow = new Adw.EntryRow({
+    title: strings.dateLabel,
+    text: transaction?.date ?? defaultDate,
+  })
+  group.add(dateRow)
+
   const category = createCategoryCombo(categories, transaction?.category)
   group.add(category.row)
 
@@ -142,6 +156,9 @@ function createForm(
       const amount = amountRow.value
       if (amount <= 0) return null
 
+      const date = dateRow.text.trim()
+      if (!isIsoDate(date)) return null
+
       const kind = (kindToggle.getActiveName() ?? 'expense') as TransactionKind
       const description = descriptionRow.text.trim()
       const frequency = REPEAT_OPTIONS[repeatRow.selected] ?? null
@@ -149,7 +166,7 @@ function createForm(
 
       return {
         input: {
-          date: transaction?.date ?? defaultDate,
+          date,
           description: description || defaultDescription(kind),
           category: category.read(),
           kind,

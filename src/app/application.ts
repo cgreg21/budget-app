@@ -84,7 +84,7 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
       openUrl: (url) => Gio.AppInfo.launchDefaultForUri(url, null),
       language: () => generalSettingsStore.settings.language,
     })
-    const calendarSyncService = new CalendarSyncService({ budgetStore, categoryStore })
+    const calendarSyncService = new CalendarSyncService({ budgetStore, categoryStore, recurrenceStore })
     const configArchive = new ConfigArchiveService({
       general: generalSettingsStore,
       thresholds: thresholdsStore,

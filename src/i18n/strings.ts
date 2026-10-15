@@ -310,6 +310,7 @@ export interface Strings {
     typeRow: string
     amountLabel: string
     onceLabel: string
+    dateLabel: string
     repeatGroupTitle: string
     repeatGroupDescription: string
     editTitle: string

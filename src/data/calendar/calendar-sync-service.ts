@@ -1,10 +1,11 @@
 import {
   CalDavClient, CalendarError, isCalendarConfigComplete, normalizeCalendarConfig,
-  syncCalendar, transactionHash,
-  type CalendarConfig, type CalendarStatus, type Category, type HttpTransport, type Transaction,
+  syncCalendar, recurrenceHash, transactionHash,
+  type CalendarConfig, type CalendarStatus, type Category, type HttpTransport, type Recurrence, type Transaction,
 } from 'budget-lib'
 import type { BudgetStore } from '../budget-store.js'
 import type { CategoryStore } from '../category-store.js'
+import type { RecurrenceStore } from '../recurrence-store.js'
 import type { StoreListener, Unsubscribe } from '../json-file-store.js'
 import type { SecureStoreBackendName } from '../secure-store.js'
 import { t } from '../../i18n/index.js'
@@ -33,6 +34,7 @@ function errorMessage(error: unknown): string {
 export interface CalendarSyncOptions {
   budgetStore: BudgetStore
   categoryStore: CategoryStore
+  recurrenceStore: RecurrenceStore
   transport?: HttpTransport
   passwords?: CalendarPasswordStore
   stateStore?: CalendarStateStore
@@ -46,19 +48,26 @@ function fingerprint(transactions: readonly Transaction[]): string {
   return JSON.stringify(transactions.map(transactionHash).sort())
 }
 
+function recurrenceFingerprint(recurrences: readonly Recurrence[]): string {
+  return JSON.stringify(recurrences.map(recurrenceHash).sort())
+}
+
 export class CalendarSyncService {
   readonly #budget: BudgetStore
   readonly #categories: CategoryStore
+  readonly #recurrences: RecurrenceStore
   readonly #state: CalendarStateStore
   readonly #passwords: CalendarPasswordStore
   readonly #transport: HttpTransport
   readonly #listeners = new Set<StoreListener>()
   readonly #unsubscribe: Unsubscribe
   readonly #unsubscribeCategories: Unsubscribe
+  readonly #unsubscribeRecurrences: Unsubscribe
   readonly #ownsState: boolean
   #status: CalendarStatus
   #observed: string
   #observedCategories: string
+  #observedRecurrences: string
   #timer?: NodeJS.Timeout
   #retry?: NodeJS.Timeout
   #periodic?: NodeJS.Timeout
@@ -69,10 +78,11 @@ export class CalendarSyncService {
   #disposed = false
   #version = 0
 
-  constructor({ budgetStore, categoryStore, transport = nodeCalendarTransport,
+  constructor({ budgetStore, categoryStore, recurrenceStore, transport = nodeCalendarTransport,
     passwords = new CalendarPasswordStore(), stateStore }: CalendarSyncOptions) {
     this.#budget = budgetStore
     this.#categories = categoryStore
+    this.#recurrences = recurrenceStore
     this.#passwords = passwords
     this.#ownsState = stateStore === undefined
     this.#state = stateStore ?? new CalendarStateStore()
@@ -88,6 +98,14 @@ export class CalendarSyncService {
       const current = categoryFingerprint(this.#categories.categories)
       if (current === this.#observedCategories) return
       this.#observedCategories = current
+      this.schedule()
+    })
+    this.#observedRecurrences = recurrenceFingerprint(this.#recurrences.recurrences)
+    this.#unsubscribeRecurrences = this.#recurrences.onChange(() => {
+      if (this.#disposed || this.#applying) return
+      const current = recurrenceFingerprint(this.#recurrences.recurrences)
+      if (current === this.#observedRecurrences) return
+      this.#observedRecurrences = current
       this.schedule()
     })
     this.#unsubscribe = this.#budget.onTransactionsChange(() => {
@@ -195,6 +213,7 @@ export class CalendarSyncService {
     if (this.#periodic) clearInterval(this.#periodic)
     this.#unsubscribe()
     this.#unsubscribeCategories()
+    this.#unsubscribeRecurrences()
     this.#listeners.clear()
     if (this.#ownsState) this.#state.dispose()
   }
@@ -227,7 +246,7 @@ export class CalendarSyncService {
       const local = this.#budget.allTransactions
       const sent = new Map(local.map((transaction) => [transaction.id, transactionHash(transaction)]))
       const localCategories = this.#categories.categories.map(({ name, icon }) => ({ name, icon }))
-      const result = await syncCalendar(new CalDavClient(config, password, this.#transport), local, this.#state.calendar.baseline, localCategories)
+      const result = await syncCalendar(new CalDavClient(config, password, this.#transport), local, this.#state.calendar.baseline, localCategories, this.#recurrences.recurrences)
       if (this.#disposed || version !== this.#version) return
       const currentTransactions = this.#budget.allTransactions
       if (fingerprint(currentTransactions) !== fingerprint(local)) this.#dirty = true

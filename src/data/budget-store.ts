@@ -178,7 +178,15 @@ export class BudgetStore {
   }
 
   update(id: string, input: TransactionInput): void {
-    this.#monthStore(this.#selectedMonth).update(id, input)
+    const month = monthKeyOf(input.date)
+    if (month === this.#selectedMonth) {
+      this.#monthStore(month).update(id, input)
+      return
+    }
+    // The date left the month on screen: the transaction moves with it.
+    this.#monthStore(this.#selectedMonth).remove(id)
+    this.selectMonth(month)
+    this.#monthStore(month).importMany([{ id, ...input }])
   }
 
   /**
