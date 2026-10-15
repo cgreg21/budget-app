@@ -118,6 +118,8 @@ export interface Strings {
     conflict: string
     serverError(status: number): string
     usernameLabel: string
+    syncIntervalLabel: string
+    syncIntervalSubtitle: string
     passwordLabel: string
     passwordSubtitle: string
     passwordSavedSubtitle: string

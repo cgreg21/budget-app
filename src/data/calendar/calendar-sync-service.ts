@@ -61,6 +61,7 @@ export class CalendarSyncService {
   #observedCategories: string
   #timer?: NodeJS.Timeout
   #retry?: NodeJS.Timeout
+  #periodic?: NodeJS.Timeout
   #running?: Promise<void>
   #dirty = false
   #applying = false
@@ -117,6 +118,7 @@ export class CalendarSyncService {
       lastSync: changedAccount ? undefined : previous.lastSync })
     this.setStatus({ state: normalized.enabled ? 'offline' : 'disabled', lastSync: this.#state.calendar.lastSync })
     this.#dirty = false
+    this.restartPeriodic()
     this.schedule()
   }
 
@@ -158,7 +160,18 @@ export class CalendarSyncService {
   start(): void {
     if (this.#started || this.#disposed) return
     this.#started = true
+    this.restartPeriodic()
     void this.syncNow()
+  }
+
+  /** Automatic synchronisation every `syncIntervalMinutes`; off when the calendar is disabled or the interval is 0. */
+  private restartPeriodic(): void {
+    if (this.#periodic) clearInterval(this.#periodic)
+    this.#periodic = undefined
+    const minutes = this.config.syncIntervalMinutes ?? 0
+    if (!this.#started || this.#disposed || !this.config.enabled || minutes <= 0) return
+    this.#periodic = setInterval(() => void this.syncNow(), minutes * 60_000)
+    this.#periodic.unref()
   }
 
   resume(): void {
@@ -179,6 +192,7 @@ export class CalendarSyncService {
     this.#disposed = true
     this.#version++
     this.clearTimers()
+    if (this.#periodic) clearInterval(this.#periodic)
     this.#unsubscribe()
     this.#unsubscribeCategories()
     this.#listeners.clear()

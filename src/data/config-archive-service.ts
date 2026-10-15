@@ -129,8 +129,8 @@ export class ConfigArchiveService {
   /** Returns whether a password the file held could not be stored. */
   private async applyCalendar(data: ConfigData): Promise<boolean> {
     const { calendar } = this.#deps
-    const { enabled, calendarUrl, username, password } = data.calendar
-    const config = normalizeCalendarConfig({ enabled, calendarUrl, username })
+    const { enabled, calendarUrl, username, syncIntervalMinutes, password } = data.calendar
+    const config = normalizeCalendarConfig({ enabled, calendarUrl, username, syncIntervalMinutes })
     const complete = isCalendarConfigComplete(config)
 
     let stored = false

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_CALENDAR_CONFIG, type CalendarConfig } from 'budget-lib'
 import { createTempUserDataDir, removeTempUserDataDir, writeJson, type TempDataDir } from '../../helpers/temp-data-dir.js'
 
-const config: CalendarConfig = { enabled: true, calendarUrl: 'https://dav.test/cal', username: 'alice' }
+const config: CalendarConfig = { enabled: true, calendarUrl: 'https://dav.test/cal', username: 'alice', syncIntervalMinutes: 0 }
 let temp: TempDataDir
 const opened: { dispose(): void }[] = []
 beforeEach(() => {

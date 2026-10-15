@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_CATEGORY_ICON, base64Utf8, categoriesToIcs, icsToCategories, CATEGORIES_BASELINE_KEY, transactionToIcs, icsToTransaction, type CalendarConfig, type HttpRequest, type HttpResponse, type Transaction } from 'budget-lib'
 import { createTempUserDataDir, removeTempUserDataDir, writeJson, type TempDataDir } from '../../helpers/temp-data-dir.js'
 
-const config: CalendarConfig = { enabled: true, calendarUrl: 'https://dav.test/cal', username: 'alice' }
+const config: CalendarConfig = { enabled: true, calendarUrl: 'https://dav.test/cal', username: 'alice', syncIntervalMinutes: 0 }
 const tx = (overrides: Partial<Transaction> = {}): Transaction => ({ id: 't1', date: '2026-09-10', description: 'Coffee', category: 'Cafe', kind: 'expense', amount: 12, ...overrides })
 
 function fakeServer() {

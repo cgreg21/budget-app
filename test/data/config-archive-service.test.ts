@@ -31,7 +31,7 @@ import { createTempUserDataDir, removeTempUserDataDir, writeText, type TempDataD
 const PASSPHRASE = 'correct horse battery'
 const REDIRECT = 'http://localhost:8765/bank'
 const PEM = '-----BEGIN PRIVATE KEY-----\nQUJD\n-----END PRIVATE KEY-----\n'
-const CALENDAR: CalendarConfig = { enabled: true, calendarUrl: 'https://dav.test/cal', username: 'alice' }
+const CALENDAR: CalendarConfig = { enabled: true, calendarUrl: 'https://dav.test/cal', username: 'alice', syncIntervalMinutes: 0 }
 
 const accountOf = (config: CalendarConfig) => `${config.calendarUrl.trim().replace(/\/+$/, '')}|${config.username.trim()}`
 
@@ -277,7 +277,7 @@ describe('apply', () => {
     const { service, deps } = harness()
 
     await service.apply(fullData({ calendar: { enabled: true, calendarUrl: 'https://dav.test/other', username: 'bob', proxyUrl: '', password: '' } }))
-    expect(deps.calendar.config).toEqual({ enabled: false, calendarUrl: 'https://dav.test/other', username: 'bob' })
+    expect(deps.calendar.config).toEqual({ enabled: false, calendarUrl: 'https://dav.test/other', username: 'bob', syncIntervalMinutes: 0 })
     expect(deps.calendar.savePassword).not.toHaveBeenCalled()
 
     await service.apply(fullData({ calendar: { enabled: true, calendarUrl: '', username: '', proxyUrl: '', password: 'secret' } }))

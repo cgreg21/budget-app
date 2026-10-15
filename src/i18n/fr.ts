@@ -96,6 +96,8 @@ export const fr: Strings = {
     conflict: 'Le calendrier a changé pendant la synchronisation. Réessayez.',
     serverError: (status) => `Le serveur du calendrier a répondu HTTP ${status}.`,
     usernameLabel: 'Nom d\u2019utilisateur',
+    syncIntervalLabel: 'Synchronisation automatique (minutes)',
+    syncIntervalSubtitle: 'Synchronise toutes les N minutes tant que l\u2019application est ouverte. 0 la d\u00e9sactive.',
     passwordLabel: 'Mot de passe',
     passwordSubtitle: 'Laissez vide pour conserver le mot de passe enregistr\u00e9. Il est conserv\u00e9 de fa\u00e7on s\u00e9curis\u00e9e sur cet ordinateur uniquement.',
     passwordSavedSubtitle: 'Mot de passe enregistr\u00e9 ; il ne sera jamais affich\u00e9.',

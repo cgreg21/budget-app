@@ -74,6 +74,8 @@ export const en: Strings = {
     conflict: 'The calendar changed during synchronization. Try again.',
     serverError: (status) => `The calendar server returned HTTP ${status}.`,
     usernameLabel: 'Username',
+    syncIntervalLabel: 'Automatic synchronization (minutes)',
+    syncIntervalSubtitle: 'Synchronize every N minutes while the app is open. 0 turns it off.',
     passwordLabel: 'Password',
     passwordSubtitle: 'Leave blank to keep a saved password. The password is kept securely on this computer only.',
     passwordSavedSubtitle: 'Password saved; it is never shown here.',

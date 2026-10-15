@@ -5,7 +5,7 @@
 import Gtk from 'gi:Gtk-4.0'
 import Adw from 'gi:Adw-1'
 
-import { isCalendarConfigComplete, type CalendarConfig } from 'budget-lib'
+import { MAX_SYNC_INTERVAL_MINUTES, isCalendarConfigComplete, type CalendarConfig } from 'budget-lib'
 import type { CalendarSyncService } from '../../data/calendar/calendar-sync-service.js'
 import { t } from '../../i18n/index.js'
 import { describeCalendarState, formatCalendarLastSync } from '../format.js'
@@ -40,12 +40,18 @@ export function createCalendarGroups({ service, notify }: CalendarGroupOptions):
   urlRow.setTooltipText(strings.urlPlaceholder)
   const usernameRow = new Adw.EntryRow({ title: strings.usernameLabel, text: config.username })
   const passwordRow = new Adw.PasswordEntryRow({ title: strings.passwordLabel })
+  const intervalRow = new Adw.SpinRow({
+    title: strings.syncIntervalLabel,
+    subtitle: strings.syncIntervalSubtitle,
+    adjustment: new Gtk.Adjustment({ lower: 0, upper: MAX_SYNC_INTERVAL_MINUTES, stepIncrement: 1, pageIncrement: 10, value: config.syncIntervalMinutes ?? 0 }),
+  })
   const passwordNote = new Adw.ActionRow({ title: strings.passwordLabel, subtitle: strings.passwordSubtitle })
   const saveButton = new Gtk.Button({ label: strings.saveButton, cssClasses: ['suggested-action'] })
   settingsGroup.setHeaderSuffix(saveButton)
   settingsGroup.add(enabledRow)
   settingsGroup.add(urlRow)
   settingsGroup.add(usernameRow)
+  settingsGroup.add(intervalRow)
   settingsGroup.add(passwordRow)
   settingsGroup.add(passwordNote)
 
@@ -71,6 +77,7 @@ export function createCalendarGroups({ service, notify }: CalendarGroupOptions):
     enabled: enabledRow.active,
     calendarUrl: urlRow.text.trim(),
     username: usernameRow.text.trim(),
+    syncIntervalMinutes: Math.round(intervalRow.value),
   })
 
   const refreshPassword = async (forConfig: CalendarConfig = readConfig()) => {
