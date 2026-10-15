@@ -22,7 +22,6 @@ import {
   normalizePrivateKey,
   openConfig,
   sealConfig,
-  webCryptoConfigCipher,
   type BalanceThresholds,
   type BankConfigExport,
   type CalendarConfig,
@@ -31,6 +30,7 @@ import {
   type GeneralSettings,
 } from 'budget-lib'
 import { t } from '../i18n/index.js'
+import { nodeConfigCipher } from './node-config-cipher.js'
 import type { BankKeys, BankStateHolder } from './bank/bank-service.js'
 
 /** The parts of the stores the service reads and writes; the classes of the data layer satisfy them. */
@@ -57,7 +57,7 @@ export interface ConfigArchiveDeps {
   calendar: ConfigCalendarHolder
   bankState: BankStateHolder
   bankKeys: BankKeys
-  /** Node 20+ exposes WebCrypto globally; tests may inject a faster one. */
+  /** Defaults to node:crypto; tests may inject a faster one. */
   cipher?: ConfigCipher
 }
 
@@ -75,7 +75,7 @@ export class ConfigArchiveService {
 
   constructor(deps: ConfigArchiveDeps) {
     this.#deps = deps
-    this.#cipher = deps.cipher ?? webCryptoConfigCipher(globalThis.crypto)
+    this.#cipher = deps.cipher ?? nodeConfigCipher()
   }
 
   /** Everything the application is set up with, secrets included. */
