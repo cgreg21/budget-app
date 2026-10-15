@@ -5,7 +5,7 @@ import { t } from '../i18n/index.js'
 
 export const APP_ID = 'com.arkdev.BudgetApp'
 export const APP_NAME = 'Budget App'
-export const APP_VERSION = '0.2.0'
+export const APP_VERSION = '0.2.1'
 
 /** Read lazily so it follows the language detected at startup. */
 export function appDescription(): string {
