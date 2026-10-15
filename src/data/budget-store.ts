@@ -33,6 +33,7 @@ import {
   type Totals,
   type Transaction,
   type TransactionInput,
+  type TrashedTransaction,
 } from 'budget-lib'
 import { createId } from './id.js'
 import type { StoreListener, Unsubscribe } from './json-file-store.js'
@@ -40,6 +41,7 @@ import { migrateLegacyTransactions } from './legacy-migration.js'
 import { listStoredMonths, MonthStore, readMonthTransactions, writeMonthTransactions } from './month-store.js'
 import { MONTHS_DIR, monthFromFileName } from './paths.js'
 import type { RecurrenceStore } from './recurrence-store.js'
+import { TrashStore } from './trash-store.js'
 
 /** A month file may be created or removed by another instance or a manual edit. */
 const REFRESH_DEBOUNCE_MS = 150
@@ -49,15 +51,19 @@ export class BudgetStore {
   readonly #listeners = new Set<StoreListener>()
   readonly #transactionListeners = new Set<StoreListener>()
   readonly #recurrences: RecurrenceStore
+  readonly #trash: TrashStore
+  readonly #ownsTrash: boolean
   readonly #unsubscribeRecurrences: Unsubscribe
   #monthsWithData: readonly MonthKey[] = []
   #selectedMonth: MonthKey
   #watcher?: fs.FSWatcher
   #refreshTimer?: NodeJS.Timeout
 
-  constructor(recurrences: RecurrenceStore) {
+  constructor(recurrences: RecurrenceStore, trash?: TrashStore) {
     migrateLegacyTransactions()
     this.#recurrences = recurrences
+    this.#ownsTrash = trash === undefined
+    this.#trash = trash ?? new TrashStore()
     this.#selectedMonth = currentMonthKey()
     this.#refreshMonthsWithData()
     this.#watchMonthsDirectory()
@@ -225,8 +231,50 @@ export class BudgetStore {
     this.#recurrences.insert(recurrence)
   }
 
+  /** Moves a transaction of the selected month to the trash. */
   remove(id: string): void {
-    this.#monthStore(this.#selectedMonth).remove(id)
+    this.removeMany([id])
+  }
+
+  /** Moves transactions of the selected month to the trash in one change; returns how many moved. */
+  removeMany(ids: readonly string[]): number {
+    const removed = this.#monthStore(this.#selectedMonth).removeMany(ids)
+    this.#trash.add(removed)
+    return removed.length
+  }
+
+  /** Moves transactions of the selected month to another category; returns how many changed. */
+  changeCategory(ids: readonly string[], category: string): number {
+    return this.#monthStore(this.#selectedMonth).setCategory(ids, category)
+  }
+
+  /** The trash, most recently deleted first. */
+  get trash(): readonly TrashedTransaction[] {
+    return this.#trash.items
+  }
+
+  /** Puts trashed transactions back in the month of their date; returns how many came back. */
+  restore(ids: readonly string[]): number {
+    const restored = this.#trash.take(ids)
+    return this.importTransactions(restored)
+  }
+
+  /** Deletes trashed transactions for good (the calendar event goes at the next synchronisation). */
+  deleteForever(ids: readonly string[]): number {
+    return this.#trash.remove(ids)
+  }
+
+  emptyTrash(): number {
+    return this.#trash.empty()
+  }
+
+  /** Applies what the calendar trashed, restored or emptied. */
+  applyCalendarTrash(added: readonly TrashedTransaction[], removed: readonly string[]): void {
+    this.#trash.applyCalendar(added, removed)
+  }
+
+  onTrashChange(listener: StoreListener): Unsubscribe {
+    return this.#trash.onChange(listener)
   }
 
   /**
@@ -283,6 +331,7 @@ export class BudgetStore {
 
   dispose(): void {
     this.#unsubscribeRecurrences()
+    if (this.#ownsTrash) this.#trash.dispose()
     this.#watcher?.close()
     this.#watcher = undefined
     if (this.#refreshTimer) clearTimeout(this.#refreshTimer)

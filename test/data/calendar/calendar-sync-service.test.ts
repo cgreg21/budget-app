@@ -222,7 +222,24 @@ describe('calendar transaction synchronization', () => {
     expect(icsToTransaction(server.events.get('/cal/t1.ics')!.ics)?.amount).toBe(42)
     budget.remove('t1')
     await service.syncNow()
+    // A deleted transaction stays on the server as a trashed (cancelled) event.
+    expect(server.transactionCount()).toBe(1)
+    expect(icsToTransaction(server.events.get('/cal/t1.ics')!.ics)).toBeNull()
+    expect(budget.trash.map((item) => item.id)).toEqual(['t1'])
+    budget.emptyTrash()
+    await service.syncNow()
     expect(server.transactionCount()).toBe(0)
+  })
+  it('restores a trashed transaction from the calendar side', async () => {
+    const { service, budget, server } = await setup()
+    budget.importTransactions([tx()])
+    await service.syncNow()
+    budget.remove('t1')
+    await service.syncNow()
+    server.add(tx(), 2)
+    await service.syncNow()
+    expect(budget.trash).toEqual([])
+    expect(budget.allTransactions.map((item) => item.id)).toEqual(['t1'])
   })
   it('does not loop on downloads or delayed file notifications', async () => {
     vi.useFakeTimers()
@@ -270,8 +287,8 @@ describe('calendar transaction synchronization', () => {
     budget.updateSeries(occurrence.id, { ...occurrence, amount: 90 }, null)
     budget.remove(occurrence.id)
     await vi.advanceTimersByTimeAsync(2_000)
-    expect(server.transactionCount()).toBe(0)
-    expect([...server.events.keys()].some((href) => href.includes('recurrence-'))).toBe(false)
+    // The deleted occurrence stays on the server as a trashed event.
+    expect(server.transactionCount()).toBe(1)
   })
 
   it('preserves recurrence stamps and does not recreate remote deletions during application', async () => {
@@ -309,6 +326,24 @@ describe('calendar transaction synchronization', () => {
     expect(server.maxActive()).toBe(1)
     expect(budget.transactions[0].amount).toBe(77)
     expect(icsToTransaction(server.events.get('/cal/t1.ics')!.ics)?.amount).toBe(77)
+  })
+  it('keeps a trash edit made during a run and sends it in the next one', async () => {
+    const { service, budget, server } = await setup()
+    budget.importTransactions([tx(), tx({ id: 't2' })])
+    await service.syncNow()
+    server.add(tx({ id: 't3' }), 2)
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    server.hold(() => gate)
+    const before = server.transport.mock.calls.length
+    const running = service.syncNow()
+    await vi.waitFor(() => expect(server.transport.mock.calls.length).toBeGreaterThan(before))
+    budget.remove('t1')
+    server.hold()
+    release()
+    await running
+    expect(budget.trash.map((item) => item.id)).toEqual(['t1'])
+    expect(icsToTransaction(server.events.get('/cal/t1.ics')!.ics)).toBeNull()
   })
   it('persists baseline across restarts, so calendar deletions are not resurrected', async () => {
     const { service, budget, categories, server } = await setup()

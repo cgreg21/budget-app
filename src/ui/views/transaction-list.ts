@@ -29,7 +29,7 @@ import type { GtkWidget } from '../gtk-types.js'
 import { clearListBox } from '../widgets.js'
 import { createListTotal } from './list-total.js'
 import { createTransactionFilters } from './transaction-filters.js'
-import { createTransactionRow, type TransactionRowDeps } from './transaction-row.js'
+import { createTransactionRow, type RowSelection, type TransactionRowDeps } from './transaction-row.js'
 
 export interface TransactionListState {
   transactions: readonly Transaction[]
@@ -47,13 +47,25 @@ export interface TransactionPanels {
   update(state: TransactionListState): void
   /** The month's transactions currently kept by the filter bar. */
   filteredTransactions(): readonly Transaction[]
+  /** Selection mode: rows get a check button instead of the edit/delete actions. */
+  setSelecting(selecting: boolean): void
+  readonly selecting: boolean
+  /** Selects every transaction kept by the filter bar. */
+  selectAll(): void
+  selectNone(): void
+  selectedIds(): readonly string[]
 }
 
 export function createTransactionList(
   deps: TransactionRowDeps,
   /** Called whenever the filter itself changes, e.g. to refresh the charts. */
   onFilterChange: () => void,
+  /** Called whenever the selection mode or the selected rows change. */
+  onSelectionChange: () => void = () => {},
 ): TransactionPanels {
+  let selecting = false
+  const selected = new Set<string>()
+
   const createPanel = (recurring: boolean, title: string) => {
     const listBox = new Gtk.ListBox({
       cssClasses: ['boxed-list'],
@@ -149,12 +161,39 @@ export function createTransactionList(
     recurring: recurring.widget,
     other: other.widget,
     filteredTransactions: () => filterTransactions(state.transactions, filter),
+    get selecting() { return selecting },
+    setSelecting: (next) => {
+      if (next === selecting) return
+      selecting = next
+      selected.clear()
+      render()
+      onSelectionChange()
+    },
+    selectAll: () => {
+      for (const transaction of filterTransactions(state.transactions, filter)) selected.add(transaction.id)
+      render()
+      onSelectionChange()
+    },
+    selectNone: () => {
+      selected.clear()
+      render()
+      onSelectionChange()
+    },
+    selectedIds: () => {
+      const shown = new Set(filterTransactions(state.transactions, filter).map((transaction) => transaction.id))
+      return [...selected].filter((id) => shown.has(id))
+    },
     update: (next) => {
       state = next
+      // Rows that left the month (deleted, moved, month changed) cannot stay selected.
+      const present = new Set(next.transactions.map((transaction) => transaction.id))
+      const before = selected.size
+      for (const id of [...selected]) if (!present.has(id)) selected.delete(id)
       // A category that was renamed or deleted drops the filter that named it,
       // which renders on its own; the call below then settles the rest.
       filters.setCategories(next.categories)
       render()
+      if (selected.size !== before) onSelectionChange()
     },
   }
 }

@@ -1,7 +1,7 @@
 import {
   CalDavClient, CalendarError, isCalendarConfigComplete, normalizeCalendarConfig,
   syncCalendar, recurrenceHash, transactionHash,
-  type CalendarConfig, type CalendarStatus, type Category, type HttpTransport, type Recurrence, type Transaction,
+  type CalendarConfig, type CalendarStatus, type Category, type HttpTransport,   type Recurrence, type Transaction, type TrashedTransaction,
 } from 'budget-lib'
 import type { BudgetStore } from '../budget-store.js'
 import type { CategoryStore } from '../category-store.js'
@@ -48,6 +48,10 @@ function fingerprint(transactions: readonly Transaction[]): string {
   return JSON.stringify(transactions.map(transactionHash).sort())
 }
 
+function trashFingerprint(trash: readonly TrashedTransaction[]): string {
+  return JSON.stringify(trash.map(({ id, deletedAt }) => [id, deletedAt]).sort())
+}
+
 function recurrenceFingerprint(recurrences: readonly Recurrence[]): string {
   return JSON.stringify(recurrences.map(recurrenceHash).sort())
 }
@@ -63,11 +67,13 @@ export class CalendarSyncService {
   readonly #unsubscribe: Unsubscribe
   readonly #unsubscribeCategories: Unsubscribe
   readonly #unsubscribeRecurrences: Unsubscribe
+  readonly #unsubscribeTrash: Unsubscribe
   readonly #ownsState: boolean
   #status: CalendarStatus
   #observed: string
   #observedCategories: string
   #observedRecurrences: string
+  #observedTrash: string
   #timer?: NodeJS.Timeout
   #retry?: NodeJS.Timeout
   #periodic?: NodeJS.Timeout
@@ -106,6 +112,14 @@ export class CalendarSyncService {
       const current = recurrenceFingerprint(this.#recurrences.recurrences)
       if (current === this.#observedRecurrences) return
       this.#observedRecurrences = current
+      this.schedule()
+    })
+    this.#observedTrash = trashFingerprint(this.#budget.trash)
+    this.#unsubscribeTrash = this.#budget.onTrashChange(() => {
+      if (this.#disposed || this.#applying) return
+      const current = trashFingerprint(this.#budget.trash)
+      if (current === this.#observedTrash) return
+      this.#observedTrash = current
       this.schedule()
     })
     this.#unsubscribe = this.#budget.onTransactionsChange(() => {
@@ -214,6 +228,7 @@ export class CalendarSyncService {
     this.#unsubscribe()
     this.#unsubscribeCategories()
     this.#unsubscribeRecurrences()
+    this.#unsubscribeTrash()
     this.#listeners.clear()
     if (this.#ownsState) this.#state.dispose()
   }
@@ -246,7 +261,8 @@ export class CalendarSyncService {
       const local = this.#budget.allTransactions
       const sent = new Map(local.map((transaction) => [transaction.id, transactionHash(transaction)]))
       const localCategories = this.#categories.categories.map(({ name, icon }) => ({ name, icon }))
-      const result = await syncCalendar(new CalDavClient(config, password, this.#transport), local, this.#state.calendar.baseline, localCategories, this.#recurrences.recurrences)
+      const localTrash = this.#budget.trash.map((item) => ({ ...item }))
+      const result = await syncCalendar(new CalDavClient(config, password, this.#transport), local, this.#state.calendar.baseline, localCategories, this.#recurrences.recurrences, localTrash)
       if (this.#disposed || version !== this.#version) return
       const currentTransactions = this.#budget.allTransactions
       if (fingerprint(currentTransactions) !== fingerprint(local)) this.#dirty = true
@@ -265,6 +281,10 @@ export class CalendarSyncService {
         }
         this.#observedCategories = categoryFingerprint(this.#categories.categories)
         this.#budget.applyCalendarChanges(upserts, removed)
+        // Trash edits made during the run win and are sent in the next one.
+        if (trashFingerprint(this.#budget.trash) === trashFingerprint(localTrash)) this.#budget.applyCalendarTrash(result.trashAdded, result.trashRemoved)
+        else this.#dirty = true
+        this.#observedTrash = trashFingerprint(this.#budget.trash)
         this.#observed = fingerprint(this.#budget.allTransactions)
         const now = new Date().toISOString()
         this.#state.save({ config, baseline: result.baseline, lastSync: now })

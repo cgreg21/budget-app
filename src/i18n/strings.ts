@@ -322,8 +322,6 @@ export interface Strings {
     occurrenceEdited: string
     recurrenceRemoved: string
     recurrenceUpdated: string
-    deleteBodyOccurrence(details: string): string
-    deleteBodyOnce(details: string): string
     occurrenceDeleted: string
     deleted: string
     tabRecurring: string
@@ -399,6 +397,79 @@ export interface Strings {
     income: string
     expenses: string
     noData: string
+  }
+  selection: {
+    toggleTooltip: string
+    selectAll: string
+    selectNone: string
+    selectedCount(count: number): string
+    deleteSelected: string
+    changeCategory: string
+    changeCategoryHeading: string
+    changeCategoryBody(count: number): string
+    apply: string
+    categoryChanged(count: number, category: string): string
+    movedToTrash(count: number): string
+    selectRowTooltip: string
+  }
+  trash: {
+    menu: string
+    title: string
+    undo: string
+    emptyTitle: string
+    emptyDescription: string
+    deletedOn(date: string): string
+    restore: string
+    deleteForever: string
+    emptyTrash: string
+    selectAll: string
+    selectNone: string
+    selectedCount(count: number): string
+    restored(count: number): string
+    deletedForever(count: number): string
+    emptied: string
+    emptyHeading: string
+    emptyBody(count: number): string
+    deleteForeverHeading(count: number): string
+    deleteForeverBody: string
+    restoreTooltip: string
+    deleteForeverTooltip: string
+    done: string
+  }
+  calendarToasts: {
+    synced: string
+    failed(message: string): string
+  }
+  lock: {
+    title: string
+    description: string
+    pinLabel: string
+    unlockButton: string
+    wrongPin: string
+    blocked(seconds: number): string
+    lockMenu: string
+    securityTab: string
+    groupTitle: string
+    groupDescription(min: number, max: number): string
+    statusEnabled: string
+    statusDisabled: string
+    setPinButton: string
+    changePinButton: string
+    removePinButton: string
+    setPinHeading: string
+    changePinHeading: string
+    removePinHeading: string
+    removePinBody: string
+    currentPinLabel: string
+    newPinLabel: string
+    confirmPinLabel: string
+    pinRule(min: number, max: number): string
+    pinMismatch: string
+    wrongCurrentPin: string
+    pinSet: string
+    pinChanged: string
+    pinRemoved: string
+    operationFailed: string
   }
 }
 

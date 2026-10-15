@@ -12,12 +12,11 @@ import type { CategoryStore } from '../../data/category-store.js'
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
 import type { RecurrenceSettings, TransactionInput } from 'budget-lib'
 import { t } from '../../i18n/index.js'
-import { openConfirmDeleteDialog } from '../dialogs/confirm-delete-dialog.js'
+import { createCategoryCombo } from '../dialogs/category-combo.js'
 import { openEditScopeDialog } from '../dialogs/edit-scope-dialog.js'
 import { openTransactionDialog } from '../dialogs/transaction-dialog.js'
-import { formatDate, formatSignedAmount } from '../format.js'
 import type { GtkWidget } from '../gtk-types.js'
-import type { DisposableComponent, Notify } from '../types.js'
+import type { DisposableComponent, Notify, NotifyAction } from '../types.js'
 import { RECURRING_ICON } from '../widgets.js'
 import { createCategoryCharts } from './category-charts.js'
 import { createMonthSwitcher } from './month-switcher.js'
@@ -38,6 +37,7 @@ export interface BudgetViewDeps {
   categoryStore: CategoryStore
   thresholdsStore: ThresholdsStore
   notify: Notify
+  notifyAction: NotifyAction
 }
 
 export function createBudgetView({
@@ -46,6 +46,7 @@ export function createBudgetView({
   categoryStore,
   thresholdsStore,
   notify,
+  notifyAction,
 }: BudgetViewDeps): DisposableComponent {
   const summary = createSummaryCards()
   const charts = createCategoryCharts()
@@ -104,26 +105,93 @@ export function createBudgetView({
     },
     onDelete: (transaction) => {
       const isOccurrence = transaction.recurrenceId !== undefined
-      const details = [
-        formatSignedAmount(transaction.kind, transaction.amount),
-        transaction.category,
-        formatDate(transaction.date),
-      ].join(' · ')
-
-      openConfirmDeleteDialog(parent, {
-        name: transaction.description || t().common.noDescription,
-        body: isOccurrence
-          ? t().budgetView.deleteBodyOccurrence(details)
-          : t().budgetView.deleteBodyOnce(details),
-        onConfirm: () => {
-          budgetStore.remove(transaction.id)
-          notify(isOccurrence
-            ? t().budgetView.occurrenceDeleted
-            : t().budgetView.deleted)
-        },
-      })
+      budgetStore.remove(transaction.id)
+      notifyAction(
+        isOccurrence ? t().budgetView.occurrenceDeleted : t().budgetView.deleted,
+        t().trash.undo,
+        () => { budgetStore.restore([transaction.id]) },
+      )
     },
-  }, () => charts.update(list.filteredTransactions()))
+  }, () => charts.update(list.filteredTransactions()), () => renderSelection())
+
+  const selectionStrings = t().selection
+  const selectionToggle = new Gtk.ToggleButton({
+    iconName: 'object-select-symbolic',
+    tooltipText: selectionStrings.toggleTooltip,
+    valign: Gtk.Align.CENTER,
+  })
+  selectionToggle.on('toggled', () => list.setSelecting(selectionToggle.active))
+  const selectionCount = new Gtk.Label({ xalign: 0, hexpand: true, cssClasses: ['dim-label'] })
+  const selectAllButton = new Gtk.Button({ label: selectionStrings.selectAll })
+  selectAllButton.on('clicked', () => list.selectAll())
+  const selectNoneButton = new Gtk.Button({ label: selectionStrings.selectNone })
+  selectNoneButton.on('clicked', () => list.selectNone())
+  const categoryButton = new Gtk.Button({ label: selectionStrings.changeCategory })
+  const deleteButton = new Gtk.Button({
+    label: selectionStrings.deleteSelected,
+    iconName: 'user-trash-symbolic',
+    cssClasses: ['destructive-action'],
+  })
+
+  categoryButton.on('clicked', () => {
+    const ids = list.selectedIds()
+    if (ids.length === 0) return
+    const combo = createCategoryCombo(categoryStore.categories, undefined)
+    const rows = new Gtk.ListBox({ selectionMode: Gtk.SelectionMode.NONE, cssClasses: ['boxed-list'] })
+    rows.append(combo.row)
+    const dialog = new Adw.AlertDialog({
+      heading: selectionStrings.changeCategoryHeading,
+      body: selectionStrings.changeCategoryBody(ids.length),
+    })
+    dialog.setExtraChild(rows)
+    dialog.addResponse('cancel', t().common.cancel)
+    dialog.addResponse('apply', selectionStrings.apply)
+    dialog.setResponseAppearance('apply', Adw.ResponseAppearance.SUGGESTED)
+    dialog.setDefaultResponse('apply')
+    dialog.setCloseResponse('cancel')
+    dialog.on('response', (response) => {
+      if (response !== 'apply') return
+      const category = combo.read()
+      const changed = budgetStore.changeCategory(ids, category)
+      list.selectNone()
+      notify(selectionStrings.categoryChanged(changed, category))
+    })
+    dialog.present(parent)
+  })
+
+  deleteButton.on('clicked', () => {
+    const ids = list.selectedIds()
+    if (ids.length === 0) return
+    const moved = budgetStore.removeMany(ids)
+    list.selectNone()
+    notifyAction(selectionStrings.movedToTrash(moved), t().trash.undo, () => { budgetStore.restore(ids) })
+  })
+
+  const selectionBar = new Gtk.Box({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    spacing: 6,
+    marginStart: 12,
+    marginEnd: 12,
+    marginBottom: 6,
+  })
+  selectionBar.append(selectionToggle)
+  selectionBar.append(selectionCount)
+  selectionBar.append(selectAllButton)
+  selectionBar.append(selectNoneButton)
+  selectionBar.append(categoryButton)
+  selectionBar.append(deleteButton)
+
+  function renderSelection(): void {
+    const selecting = list.selecting
+    const count = list.selectedIds().length
+    selectionBar.setVisible(budgetStore.transactions.length > 0)
+    for (const widget of [selectionCount, selectAllButton, selectNoneButton, categoryButton, deleteButton]) {
+      widget.setVisible(selecting)
+    }
+    selectionCount.setLabel(selectionStrings.selectedCount(count))
+    categoryButton.setSensitive(count > 0)
+    deleteButton.setSensitive(count > 0)
+  }
 
   // Side by side above COMPACT_WIDTH; below it, tabs at the bottom keep each
   // panel readable instead of squeezing three columns into a narrow window.
@@ -195,12 +263,16 @@ export function createBudgetView({
   root.append(monthSwitcher.widget)
   root.append(summary.widget)
   root.append(list.filters)
+  root.append(selectionBar)
   root.append(bodyBin)
 
   const render = () => {
     const { transactions } = budgetStore
     summary.update({ totals: budgetStore.totals, thresholds: thresholdsStore.thresholds })
     list.update({ transactions, categories: categoryStore.categories })
+    // An empty month has nothing to select.
+    if (transactions.length === 0 && selectionToggle.active) selectionToggle.setActive(false)
+    renderSelection()
     // Charts follow the filter bar, same as the lists — computed after
     // list.update() so filteredTransactions() reflects the current month.
     charts.update(list.filteredTransactions())

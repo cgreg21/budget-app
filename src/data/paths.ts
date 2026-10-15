@@ -9,6 +9,8 @@
  *   ├── bank.json
  *   ├── categories.json
  *   ├── recurrences.json
+ *   ├── lock.json             (PIN hash, see lock-service.ts)
+ *   ├── trash.json
  *   ├── secrets.json          (encrypted secrets, see secure-store.ts)
  *   ├── secrets.key           (key of the encrypted-file backend, user-only)
  *   ├── thresholds.json
@@ -36,6 +38,12 @@ export const THRESHOLDS_FILE = path.join(DATA_DIR, 'thresholds.json')
 
 /** Templates replayed into every month they are due in. */
 export const RECURRENCES_FILE = path.join(DATA_DIR, 'recurrences.json')
+
+/** Deleted transactions kept until restored or deleted for good. */
+export const TRASH_FILE = path.join(DATA_DIR, 'trash.json')
+
+/** PIN lock: salted PBKDF2 hash and throttle state, never the PIN itself. */
+export const LOCK_FILE = path.join(DATA_DIR, 'lock.json')
 
 /** Calendar settings and reconciliation baseline; never contains a password. */
 export const CALENDAR_STATE_FILE = path.join(DATA_DIR, 'calendar.json')

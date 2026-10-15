@@ -24,6 +24,7 @@ import { CategoryStore } from '../data/category-store.js'
 import { ConfigArchiveService } from '../data/config-archive-service.js'
 import { RecurrenceStore } from '../data/recurrence-store.js'
 import { GeneralSettingsStore } from '../data/general-settings-store.js'
+import { LockService } from '../data/lock-service.js'
 import { ThresholdsStore } from '../data/thresholds-store.js'
 import { openAboutDialog } from '../ui/dialogs/about-dialog.js'
 import type { AdwApplication, AdwApplicationWindow } from '../ui/gtk-types.js'
@@ -92,6 +93,7 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
       bankState: bankStateStore,
       bankKeys: bankKeyStore,
     })
+    const lockService = new LockService()
     const mainWindow = createMainWindow({
       application,
       budgetStore,
@@ -102,6 +104,7 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
       bankService,
       calendarSyncService,
       configArchive,
+      lockService,
     })
 
     const networkMonitor = Gio.NetworkMonitor.getDefault()
@@ -125,6 +128,7 @@ export function runApplication({ stylesheet }: ApplicationOptions): void {
       thresholdsStore.dispose()
       recurrenceStore.dispose()
       generalSettingsStore.dispose()
+      lockService.dispose()
       loop.quit()
       application.quit()
     }

@@ -16,6 +16,7 @@ import type { BudgetStore } from '../../data/budget-store.js'
 import type { CalendarSyncService } from '../../data/calendar/calendar-sync-service.js'
 import type { CategoryStore } from '../../data/category-store.js'
 import type { ConfigArchiveService } from '../../data/config-archive-service.js'
+import type { LockService } from '../../data/lock-service.js'
 import type { GeneralSettingsStore } from '../../data/general-settings-store.js'
 import type { RecurrenceStore } from '../../data/recurrence-store.js'
 import type { ThresholdsStore } from '../../data/thresholds-store.js'
@@ -30,6 +31,7 @@ import { createCalendarGroups } from './calendar-group.js'
 import { createDataGroups } from './data-group.js'
 import { createGeneralGroup } from './general-group.js'
 import { createRecurrencesGroup } from './recurrences-group.js'
+import { createSecurityGroup } from './security-group.js'
 import { createThresholdsGroup } from './thresholds-group.js'
 
 const DIALOG_WIDTH = 480
@@ -44,6 +46,7 @@ export interface OptionsDialogOptions {
   bankService: BankService
   calendarSyncService: CalendarSyncService
   configArchive: ConfigArchiveService
+  lockService: LockService
   /** Start month proposed for a new recurrence — the month on screen. */
   selectedMonth: MonthKey
 }
@@ -59,6 +62,7 @@ export function openOptionsDialog(
     bankService,
     calendarSyncService,
     configArchive,
+    lockService,
     selectedMonth,
   }: OptionsDialogOptions,
 ): void {
@@ -138,7 +142,16 @@ export function openOptionsDialog(
   dialog.add(bankPage)
   dialog.add(calendarPage)
 
+  const security = createSecurityGroup({ lockService, parent: dialog, notify })
+  const securityPage = new Adw.PreferencesPage({
+    title: t().lock.securityTab,
+    iconName: 'system-lock-screen-symbolic',
+  })
+  securityPage.add(security.group)
+  dialog.add(securityPage)
+
   dialog.on('closed', () => {
+    security.dispose()
     thresholds.dispose()
     general.dispose()
     recurrences.dispose()

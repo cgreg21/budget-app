@@ -112,6 +112,23 @@ export class MonthStore extends JsonFileStore<Transaction[]> {
     this.commit(this.state.filter((transaction) => transaction.id !== id))
   }
 
+  /** Removes several transactions in a single write; returns the ones that were there. */
+  removeMany(ids: readonly string[]): Transaction[] {
+    const wanted = new Set(ids)
+    const removed = this.state.filter((transaction) => wanted.has(transaction.id))
+    if (removed.length > 0) this.commit(this.state.filter((transaction) => !wanted.has(transaction.id)))
+    return removed
+  }
+
+  /** Moves several transactions to another category in a single write; returns how many changed. */
+  setCategory(ids: readonly string[], category: string): number {
+    const wanted = new Set(ids)
+    const changed = this.state.filter((transaction) => wanted.has(transaction.id) && transaction.category !== category)
+    if (changed.length === 0) return 0
+    this.commit(this.state.map((transaction) => (wanted.has(transaction.id) ? { ...transaction, category } : transaction)))
+    return changed.length
+  }
+
   protected parse(raw: unknown): Transaction[] | null {
     return isTransactionArray(raw) ? raw : null
   }

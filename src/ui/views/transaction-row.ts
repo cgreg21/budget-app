@@ -35,6 +35,12 @@ export interface TransactionRowDeps {
   recurrenceOf(transaction: Transaction): Recurrence | undefined
 }
 
+/** Selection mode: rows carry a check button and the edit/delete actions step aside. */
+export interface RowSelection {
+  selected: boolean
+  onToggle(selected: boolean): void
+}
+
 function createDetails(recurrence: Recurrence, transaction: Transaction): GtkWidget {
   const strings = t().transactionRow
   const entries: readonly (readonly [string, string])[] = [
@@ -126,6 +132,7 @@ export function createTransactionRow(
   transaction: Transaction,
   icon: string,
   deps: TransactionRowDeps,
+  selection?: RowSelection,
 ): AdwActionRow {
   const isIncome = transaction.kind === 'income'
   // Green or red, shared by the edge, the icon's disc and the amount.
@@ -137,7 +144,17 @@ export function createTransactionRow(
     subtitle: `${transaction.category}`,
     activatable: true,
   })
-  row.on('activated', () => deps.onEdit(transaction))
+  const check = selection
+    ? new Gtk.CheckButton({ active: selection.selected, valign: Gtk.Align.CENTER, tooltipText: t().selection.selectRowTooltip })
+    : null
+  if (check && selection) {
+    check.on('toggled', () => selection.onToggle(check.active))
+    row.addPrefix(check)
+  }
+  row.on('activated', () => {
+    if (check) check.setActive(!check.active)
+    else deps.onEdit(transaction)
+  })
 
   // Added after construction: setting `cssClasses` here would drop the
   // `activatable` class GTK puts on the row itself.
@@ -162,6 +179,8 @@ export function createTransactionRow(
     cssClasses: ['budget-amount', kindClass],
     valign: Gtk.Align.CENTER,
   }))
+
+  if (check) return row
 
   row.addSuffix(createRowActionButton({
     iconName: 'document-edit-symbolic',
