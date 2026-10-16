@@ -30,6 +30,8 @@ export interface Strings {
   }
   format: {
     frequency: {
+      daily: string
+      weekly: string
       monthly: string
       bimonthly: string
       quarterly: string

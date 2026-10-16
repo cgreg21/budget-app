@@ -12,7 +12,7 @@ export const fr: Strings = {
   },
   appInfo: { description: 'Gestion de budget personnel — revenus, dépenses et solde.' },
   format: {
-    frequency: { monthly: 'Mensuelle', bimonthly: 'Bimestrielle', quarterly: 'Trimestrielle', semiannual: 'Semestrielle', yearly: 'Annuelle' },
+    frequency: { daily: 'Quotidienne', weekly: 'Hebdomadaire', monthly: 'Mensuelle', bimonthly: 'Bimestrielle', quarterly: 'Trimestrielle', semiannual: 'Semestrielle', yearly: 'Annuelle' },
     recurrenceFrom: (month) => `à partir de ${month}`,
     recurrenceRange: (start, end, occurrences) => `${start} → ${end} (${occurrences} fois)`,
   },
