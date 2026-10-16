@@ -31,7 +31,9 @@ export interface Strings {
   format: {
     frequency: {
       monthly: string
+      bimonthly: string
       quarterly: string
+      semiannual: string
       yearly: string
     }
     recurrenceFrom(month: string): string
